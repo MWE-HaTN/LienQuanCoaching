@@ -1155,6 +1155,20 @@
             };
         }
 
+        // --- QUAN HỆ COUNTER: KHẮC CHẾ THẬT hay chỉ ĐỐI LANE? ---
+        // Cột "Counter Pool" trong dữ liệu phần lớn là danh sách đối lane chứ không phải khắc chế một
+        // chiều: 97% counter là tướng cùng vị trí, và có 27 cặp khắc chế lẫn nhau (Yue⟷Zata,
+        // Hayate⟷Violet, Omen⟷Qi...). Với cặp 2 chiều thì không bên nào thực sự có lợi thế, nên không
+        // được phép nói "khắc chế" và không được ăn đủ điểm như một counter thật.
+        function counterNamesOf(heroName) {
+            const d = draftData.find(x => x.hero === heroName);
+            return d && d.counter ? d.counter.split(' / ').map(s => s.trim()) : [];
+        }
+        function counterRelation(attacker, target) {
+            if (!counterNamesOf(target).includes(attacker)) return null;
+            return counterNamesOf(attacker).includes(target) ? 'rival' : 'counter';
+        }
+
         // --- PHÂN TÍCH ĐỘI HÌNH: LOẠI SÁT THƯƠNG & CÔNG CỤ ---
         // Công cụ chiến thuật của từng tướng trong Meta Pool. Gắn theo mô tả trong draftData + lối chơi thực tế.
         // LƯU Ý: đây là bản gắn tay lần đầu, coach nên rà lại theo cách đội mình vận hành từng tướng.
@@ -1256,12 +1270,12 @@
                     }
                 }
 
-                // 2. Counter trực tiếp từng tướng đối phương đã pick
+                // 2. Counter trực tiếp từng tướng đối phương đã pick — chỉ tính đủ điểm khi là khắc chế
+                // MỘT CHIỀU; cặp khắc chế qua lại chỉ là đối lane sòng phẳng, không phải lợi thế
                 oppPicks.forEach(op => {
-                    const om = draftData.find(x => x.hero === op);
-                    if (om && om.counter.split(' / ').map(s => s.trim()).includes(d.hero)) {
-                        score += 26; reasons.push(`khắc chế ${op}`);
-                    }
+                    const rel = counterRelation(d.hero, op);
+                    if (rel === 'counter') { score += 26; reasons.push(`khắc chế ${op}`); }
+                    else if (rel === 'rival') { score += 12; reasons.push(`đối lane sòng phẳng với ${op}`); }
                 });
 
                 // 3. Counter theo xu hướng đội hình đối phương
@@ -1311,12 +1325,11 @@
                 if (openForPos) { score += 25; reasons.push(`họ còn trống ${d.pos}`); }
                 else { score += 15; reasons.push(`họ có thể flex vào ${d.flex}`); }
 
-                // 2. Tướng này khắc chế đội hình mình đang xây
+                // 2. Tướng này khắc chế đội hình mình đang xây (đối lane 2 chiều thì nguy hiểm ít hơn hẳn)
                 myPicks.forEach(mp => {
-                    const mm = draftData.find(x => x.hero === mp);
-                    if (mm && mm.counter.split(' / ').map(s => s.trim()).includes(d.hero)) {
-                        score += 30; reasons.push(`khắc chế ${mp} của mình`);
-                    }
+                    const rel = counterRelation(d.hero, mp);
+                    if (rel === 'counter') { score += 30; reasons.push(`khắc chế ${mp} của mình`); }
+                    else if (rel === 'rival') { score += 14; reasons.push(`đối lane với ${mp} của mình`); }
                 });
 
                 // 3. Ăn ý với đội hình đối phương -> cấm để phá combo của họ
@@ -1467,11 +1480,18 @@
                 } else if (!meta) {
                     html = `<span class="text-slate-400">${heroName} chưa có dữ liệu counter trong Meta Pool — tự cân nhắc xem đối phương còn tướng nào đối trọng được (họ còn ${oppPicksLeft} lượt pick).</span>`;
                 } else {
-                    const counterNames = meta.counter.split(' / ').map(s => s.trim());
-                    const live = available.filter(d => d.hero !== heroName && counterNames.includes(d.hero) && servedPositions(d, oppOpenPos).length > 0);
-                    html = live.length > 0
-                        ? `<span class="text-rose-300 font-bold">⚠️ Nếu khóa ${heroName} bây giờ:</span> <span class="text-slate-300">đối phương vẫn còn <b class="text-rose-300">${live.map(d => `${d.hero} (${d.tier})`).join(', ')}</b> để đối trọng, và họ còn <b class="text-amber-300">${oppPicksLeft}</b> lượt pick.${live.length >= 2 ? ' Cân nhắc lấy tướng an toàn trước, để dành nước này cho lượt sau.' : ''}</span>`
-                        : `<span class="text-emerald-300 font-bold">✅ Khóa ${heroName} an toàn:</span> <span class="text-slate-300">mọi tướng khắc chế ${heroName} đều đã bị cấm/lấy, hoặc không còn vị trí trống để đối phương dùng (họ còn ${oppPicksLeft} lượt pick).</span>`;
+                    // Tách khắc chế thật (một chiều) khỏi đối lane (hai chiều) — gộp chung sẽ dọa quá lời
+                    const live = available.filter(d => d.hero !== heroName && servedPositions(d, oppOpenPos).length > 0);
+                    const hard = live.filter(d => counterRelation(d.hero, heroName) === 'counter');
+                    const even = live.filter(d => counterRelation(d.hero, heroName) === 'rival');
+                    const fmt = list => list.map(d => `${d.hero} (${d.tier})`).join(', ');
+                    if (hard.length > 0) {
+                        html = `<span class="text-rose-300 font-bold">⚠️ Nếu khóa ${heroName} bây giờ:</span> <span class="text-slate-300">đối phương còn <b class="text-rose-300">${fmt(hard)}</b> khắc chế thẳng, và họ còn <b class="text-amber-300">${oppPicksLeft}</b> lượt pick.${even.length > 0 ? ` (Ngoài ra ${fmt(even)} là đối lane sòng phẳng, không đáng ngại bằng.)` : ''}</span>`;
+                    } else if (even.length > 0) {
+                        html = `<span class="text-amber-300 font-bold">➖ Khóa ${heroName} chấp nhận được:</span> <span class="text-slate-300">không còn tướng nào khắc chế thẳng; <b class="text-amber-300">${fmt(even)}</b> chỉ là đối lane sòng phẳng, ăn thua do người chơi (họ còn ${oppPicksLeft} lượt pick).</span>`;
+                    } else {
+                        html = `<span class="text-emerald-300 font-bold">✅ Khóa ${heroName} an toàn:</span> <span class="text-slate-300">mọi tướng khắc chế ${heroName} đều đã bị cấm/lấy, hoặc không còn vị trí trống để đối phương dùng (họ còn ${oppPicksLeft} lượt pick).</span>`;
+                    }
                 }
             } else if (oppPicks.length === 0) {
                 // Phase 1: mọi tướng cùng tier đều ngang điểm nên chưa đo được "chênh với tướng thay thế"
