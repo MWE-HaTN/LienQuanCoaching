@@ -225,7 +225,7 @@
                     <div id="sim-hero-pool" class="grid grid-cols-4 md:grid-cols-5 gap-2 max-h-[300px] overflow-y-auto pr-2"></div>
                     
                     <div class="mt-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
-                        <h4 class="text-amber-400 font-bold heading mb-2 text-sm">Gợi ý Đối Phương (Counter)</h4>
+                        <h4 id="sim-counter-title" class="text-amber-400 font-bold heading mb-2 text-sm">Gợi ý Đối Phương (Counter)</h4>
                         <div id="sim-counter-info" class="text-sm text-slate-300 min-h-[40px]">
                             <span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>
                         </div>
@@ -482,7 +482,7 @@
             { pos: "Mid", hero: "Lorion", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Late", counter: "Liliana / Zata / Raz", sync: "Dolia, Y'bneth", use: "Giao tranh tổng.", bancond: "Setup mạnh quanh Lorion, tăng tier ở S3-2026.", wincond: "Thắng giao tranh", wc_type: "late", wr: "58.9%", presence: "53.5%", source: "AOG Spring 2026", status: "Có dữ liệu" },
             { pos: "Mid", hero: "Liliana", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "Support", spike: "Mid", counter: "Yue / Raz / Zata", sync: "Dolia, Alice", use: "Cơ động, tái thiết lập.", bancond: "Đã hạ tier khá nhiều so với bản trước.", wincond: "Bắt lẻ", wc_type: "front-to-back", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
             { pos: "Mid", hero: "Natalya", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "—", spike: "Late", counter: "Yue / Liliana / Raz", sync: "Dolia, Y'bneth", use: "Cấu rỉa choke point.", bancond: "Tướng tủ.", wincond: "Suy yếu trước giao tranh", wc_type: "front-to-back", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
-            { pos: "AD", hero: "Flowborn", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Late", counter: "Hayate / Moren / Violet", sync: "Dolia, Y'bneth", use: "AD chủ lực.", bancond: "AD đối phương mạnh, vẫn top-ban.", wincond: "Giao tranh kéo dài", wc_type: "late", wr: "50.9%", presence: "63.5%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "AD", hero: "Flowborn", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "Mid", spike: "Late", counter: "Hayate / Moren / Violet", sync: "Dolia, Y'bneth", use: "AD chủ lực; có hẳn bản thể Pháp sư (AP) riêng để linh hoạt đi Mid, cấu rỉa/DPS phép thay vì đánh thường.", bancond: "AD đối phương mạnh, vẫn top-ban.", wincond: "Giao tranh kéo dài", wc_type: "late", wr: "50.9%", presence: "63.5%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
             { pos: "AD", hero: "Hayate", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Late", counter: "Moren / Violet / Flowborn", sync: "Dolia, Y'bneth", use: "Anti-tank DPS.", bancond: "Player Hayate mạnh, tăng tier ở S3-2026.", wincond: "Bào mòn tuyến trước", wc_type: "front-to-back", wr: "55.6%", presence: "68.6%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
             { pos: "AD", hero: "Violet", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Hayate / Moren / Flowborn", sync: "Dolia, Alice", use: "Poke, mobility.", bancond: "Comfort pick, tăng tier ở S3-2026.", wincond: "Cấu rỉa, kết liễu", wc_type: "split", wr: "47.1%", presence: "31.8%", source: "AOG Spring 2026", status: "Có dữ liệu" },
             { pos: "AD", hero: "Moren", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid/Late", counter: "Elsu / Violet / Hayate", sync: "Dolia, Y'bneth", use: "Bùng nổ sát thương diện rộng, cơ động như đấu sĩ/sát thủ sau khi làm lại bản 2026.", bancond: "Làm lại mạnh trong bản 2026, cần cấm nếu đối thủ chưa quen lối chơi cơ động.", wincond: "Giao tranh tổng, bùng nổ sát thương", wc_type: "front-to-back", wr: "—", presence: "—", source: "Tier List S3-2026", status: "Chưa có dữ liệu" },
@@ -841,7 +841,7 @@
             if(!simSelectedHero) return;
             const step = draftSteps[simStep];
             simState[step.team][step.type][step.index] = simSelectedHero;
-            if(step.type === 'pick') { updateCounterInfo(simSelectedHero); }
+            if(step.type === 'pick') { updateCounterInfo(simSelectedHero, step.team); }
             updateSimUI();
             simStep++;
             cancelSimSelect();
@@ -890,10 +890,29 @@
             }
         }
 
-        function updateCounterInfo(heroName) {
+        function updateCounterInfo(heroName, pickedByTeam) {
             const heroData = allHeroes.find(h => h.name === heroName);
-            if(heroData && heroData.counter) {
-                document.getElementById('sim-counter-info').innerHTML = `
+            if (!heroData) return;
+            const titleEl = document.getElementById('sim-counter-title');
+            const infoEl = document.getElementById('sim-counter-info');
+
+            // simStep chưa tăng ở thời điểm này -> draftSteps[simStep + 1] chính là lượt kế tiếp
+            const nextStep = draftSteps[simStep + 1];
+            const sameTeamPicksNext = nextStep && nextStep.type === 'pick' && nextStep.team === pickedByTeam;
+
+            if (sameTeamPicksNext) {
+                // Đội mình vừa pick và sắp pick tiếp -> gợi ý Phối hợp thay vì Counter (pick trước đó không phải của đối phương)
+                titleEl.innerText = 'Gợi ý Phối Hợp (Combo)';
+                const meta = draftData.find(d => d.hero === heroName);
+                const syncText = meta && meta.sync && meta.sync !== '—' ? meta.sync : null;
+                infoEl.innerHTML = syncText
+                    ? `<div class="text-emerald-400 font-bold mb-1">Phối hợp tốt với ${heroName}:</div>
+                       <div class="text-cyan-400 font-semibold">${syncText}</div>
+                       <div class="text-slate-400 text-xs mt-2 italic">Đội bạn pick tiếp ngay sau đây — ưu tiên tướng ăn ý để dựng combo!</div>`
+                    : `<div class="text-slate-400 text-xs italic">Đội bạn pick tiếp ngay sau đây — ${heroName} chưa có dữ liệu phối hợp cụ thể, hãy ưu tiên lấp vị trí còn thiếu.</div>`;
+            } else if (heroData.counter) {
+                titleEl.innerText = 'Gợi ý Đối Phương (Counter)';
+                infoEl.innerHTML = `
                     <div class="text-rose-400 font-bold mb-1">Để counter ${heroName}:</div>
                     <div class="text-emerald-400 font-semibold">${heroData.counter}</div>
                     <div class="text-slate-400 text-xs mt-2 italic">Hãy chuẩn bị để pick hoặc ban các tướng này!</div>`;
@@ -925,7 +944,172 @@
         }
 
         function describeSuggestions(list, limit = 3) {
-            return list.slice(0, limit).map(d => `${d.hero} (${d.tier})`).join(', ');
+            return list.slice(0, limit).map(d => heroChip(d)).join(' ');
+        }
+
+        // Chip bấm được: click là chọn thẳng tướng đó, khỏi phải tìm lại trong Hero Pool lúc đang đếm giờ
+        function heroChip(d, note) {
+            return `<button onclick="selectSimHero('${jsEscape(d.hero)}')" class="inline-block bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 rounded px-1.5 py-0.5 my-0.5 font-bold transition">${d.hero} (${d.tier})${note ? ` <span class="text-slate-400 font-normal">${note}</span>` : ''}</button>`;
+        }
+
+        const priorityBadge = { 1: '<span class="bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">BẮT BUỘC</span>', 2: '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">NÊN</span>', 3: '<span class="bg-slate-500/20 text-slate-300 border border-slate-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">CÂN NHẮC</span>' };
+
+        // Nếu đối phương có từ 2 tướng trở lên cùng 1 xu hướng Win Condition -> coi đó là trend cần counter
+        function computeOppTrend(oppPicks) {
+            const counts = {};
+            oppPicks.forEach(p => {
+                const d = draftData.find(x => x.hero === p);
+                if (d) counts[d.wc_type] = (counts[d.wc_type] || 0) + 1;
+            });
+            const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+            if (entries.length === 0) return null;
+            const [wcType, count] = entries[0];
+            return count >= 2 ? { wcType, count } : null;
+        }
+
+        // Với mỗi xu hướng Win Condition của đối phương, nên thiên về nhóm nào để khắc chế lại
+        const counterWcAdvice = {
+            late: { targetWc: ['snowball', 'dive'], text: "thiên về Late Game Scaling — nên chủ động Snowball/Dive để kết thúc trận trước khi họ scale kịp trang bị" },
+            snowball: { targetWc: ['front-to-back'], text: "thiên về Early Snowball — cần tướng trâu bò/kiểm soát tuyến để cầm cự early rồi áp đảo về late" },
+            dive: { targetWc: ['front-to-back'], text: "thiên về Dive/bắt lẻ — ưu tiên tướng Peel/CC ngược để bảo vệ carry" },
+            split: { targetWc: ['front-to-back', 'snowball'], text: "thiên về Split-push — ưu tiên tướng dọn lính nhanh hoặc tạo áp lực đối xứng" },
+            'front-to-back': { targetWc: ['dive', 'snowball'], text: "thiên về Front-to-Back — ưu tiên tướng bắt lẻ/dive để phá đội hình trước khi họ tập hợp đủ người" }
+        };
+
+        // Gợi ý counter: ưu tiên phát hiện xu hướng (2+ tướng cùng Win Condition), nếu không có thì counter trực tiếp tướng vừa pick
+        function buildCounterSection(oppPicks, available) {
+            if (oppPicks.length === 0) return null;
+            const trend = computeOppTrend(oppPicks);
+            if (trend && counterWcAdvice[trend.wcType]) {
+                const adv = counterWcAdvice[trend.wcType];
+                const candidates = available.filter(d => adv.targetWc.includes(d.wc_type)).slice(0, 3);
+                return { label: `Đối phương có ${trend.count} tướng ${adv.text}.`, picks: candidates };
+            }
+            const lastPick = oppPicks[oppPicks.length - 1];
+            const lastMeta = draftData.find(d => d.hero === lastPick);
+            const counterNames = lastMeta ? lastMeta.counter.split(' / ').map(s => s.trim()) : [];
+            const directCounters = available.filter(d => counterNames.includes(d.hero));
+            return {
+                label: `Counter trực tiếp ${lastPick} vừa được đối phương pick.`,
+                picks: directCounters.length > 0 ? directCounters : available.filter(d => tierRank(d.tier) <= 1).slice(0, 3)
+            };
+        }
+
+        // --- PHÂN TÍCH ĐỘI HÌNH: LOẠI SÁT THƯƠNG & CÔNG CỤ ---
+        // Công cụ chiến thuật của từng tướng trong Meta Pool. Gắn theo mô tả trong draftData + lối chơi thực tế.
+        // LƯU Ý: đây là bản gắn tay lần đầu, coach nên rà lại theo cách đội mình vận hành từng tướng.
+        const heroTools = {
+            "Florentino": ["waveclear"], "Arthur": ["frontline", "engage"], "Zuka": ["engage"],
+            "Volkath": ["engage", "frontline"], "Ryoma": ["frontline", "waveclear"], "Yena": ["waveclear"],
+            "Qi": ["engage"], "Omen": ["waveclear"], "Richter": ["engage"], "Lữ Bố": ["frontline", "engage"],
+            "Sinestrea": [], "Billow": ["engage"], "Nakroth": ["waveclear"], "Paine": [],
+            "Zephys": ["frontline", "engage"], "Eland'orr": [], "Kriknak": [], "Aoi": ["engage"],
+            "Yue": ["waveclear", "peel"], "Gildur": ["engage", "frontline"], "Zata": [], "Raz": ["waveclear"],
+            "Lorion": ["engage", "waveclear"], "Liliana": ["peel"], "Natalya": ["waveclear"],
+            "Flowborn": [], "Hayate": ["antiheal"], "Violet": [], "Moren": [], "Elsu": [],
+            "Capheny": [], "Stuart": [], "Tel'Annas": [], "Yorn": [],
+            "Dolia": ["peel", "cleanse"], "Toro": ["engage", "frontline"], "Alice": ["peel", "engage"],
+            "Aya": ["peel"], "Y'bneth": ["frontline", "engage"], "Annette": ["peel", "cleanse"],
+            "Thane": ["frontline", "engage"]
+        };
+
+        // Tướng gây sát thương phép dù không thuộc lớp Pháp sư (vd Paine là Sát thủ nhưng burst phép)
+        const magicDamageOverrides = ["Paine"];
+
+        // 3 nhóm: vật lý / phép / phụ trợ (Đỡ đòn + Trợ thủ không tính là nguồn sát thương chính)
+        function getDamageType(heroName) {
+            if (magicDamageOverrides.includes(heroName)) return 'magic';
+            const base = allHeroes.find(h => h.name === heroName);
+            if (!base) return 'utility';
+            if (base.class === 'Pháp sư') return 'magic';
+            if (base.class === 'Trợ thủ' || base.class === 'Đỡ đòn') return 'utility';
+            return 'physical';
+        }
+
+        const toolLabels = { engage: 'Mở giao tranh', peel: 'Bảo kê carry', frontline: 'Tuyến trước', waveclear: 'Dọn lính', cleanse: 'Gỡ khống chế', antiheal: 'Giảm hồi máu' };
+
+        function analyzeTeamComp(picks) {
+            const dmg = { physical: 0, magic: 0, utility: 0 };
+            const tools = new Set();
+            picks.forEach(p => {
+                dmg[getDamageType(p)]++;
+                (heroTools[p] || []).forEach(t => tools.add(t));
+            });
+            return { dmg, tools };
+        }
+
+        // Cảnh báo mất cân bằng, kèm mức ưu tiên: 1 = Bắt buộc, 2 = Nên, 3 = Cân nhắc
+        function buildCompWarnings(picks) {
+            const { dmg, tools } = analyzeTeamComp(picks);
+            const n = picks.length;
+            const warnings = [];
+            const dmgDealers = dmg.physical + dmg.magic;
+            if (n >= 3 && dmgDealers >= 2 && dmg.magic === 0) {
+                warnings.push({ level: n >= 4 ? 1 : 2, text: `Toàn bộ ${dmg.physical} nguồn sát thương đều là Vật lý — đối phương chỉ cần lên Giáp là hóa giải. Cần bổ sung Pháp sư.`, need: 'magic' });
+            }
+            if (n >= 3 && dmgDealers >= 2 && dmg.physical === 0) {
+                warnings.push({ level: n >= 4 ? 1 : 2, text: `Toàn bộ ${dmg.magic} nguồn sát thương đều là Phép — đối phương lên Kháng phép là chặn được. Cần bổ sung sát thương Vật lý.`, need: 'physical' });
+            }
+            if (n >= 3 && !tools.has('frontline')) warnings.push({ level: 2, text: 'Chưa có tướng Tuyến trước — đội hình dễ bị xuyên thẳng vào carry.', need: 'frontline' });
+            if (n >= 3 && !tools.has('engage')) warnings.push({ level: 2, text: 'Chưa có công cụ Mở giao tranh — khó chủ động bắt mục tiêu/giao tranh.', need: 'engage' });
+            if (n >= 4 && !tools.has('peel')) warnings.push({ level: 3, text: 'Chưa có công cụ Bảo kê carry — carry dễ bị dive.', need: 'peel' });
+            return warnings.sort((a, b) => a.level - b.level);
+        }
+
+        // --- BỘ MÁY CHẤM ĐIỂM GỢI Ý PICK (gộp counter + phối hợp + vị trí + nhu cầu đội hình + tier) ---
+        function buildRankedPicks(available, myPicks, oppPicks, myOpenPos) {
+            const trend = computeOppTrend(oppPicks);
+            const trendAdv = trend && counterWcAdvice[trend.wcType] ? counterWcAdvice[trend.wcType] : null;
+            const warnings = buildCompWarnings(myPicks);
+            const needs = warnings.map(w => w.need);
+            const { tools: myTools } = analyzeTeamComp(myPicks);
+
+            return available.map(d => {
+                let score = 0;
+                const reasons = [];
+
+                // 1. Vị trí: ưu tiên mạnh tướng lấp đúng chỗ trống, phạt nặng tướng trùng vị trí đã có
+                if (myOpenPos.includes(d.pos)) { score += 30; reasons.push(`lấp ${d.pos}`); }
+                else if (d.flex && d.flex !== '—' && myOpenPos.includes(d.flex)) { score += 22; reasons.push(`flex sang ${d.flex}`); }
+                else { score -= 45; }
+
+                // 2. Counter trực tiếp từng tướng đối phương đã pick
+                oppPicks.forEach(op => {
+                    const om = draftData.find(x => x.hero === op);
+                    if (om && om.counter.split(' / ').map(s => s.trim()).includes(d.hero)) {
+                        score += 26; reasons.push(`khắc chế ${op}`);
+                    }
+                });
+
+                // 3. Counter theo xu hướng đội hình đối phương
+                if (trendAdv && trendAdv.targetWc.includes(d.wc_type)) {
+                    score += 16; reasons.push(`ngược hướng ${getWcName(trend.wcType)} của đối phương`);
+                }
+
+                // 4. Phối hợp với đồng đội đã pick (2 chiều)
+                const partners = new Set();
+                myPicks.forEach(pickName => {
+                    const meta = draftData.find(x => x.hero === pickName);
+                    if (meta && meta.sync && meta.sync !== '—' && meta.sync.split(',').map(s => s.trim()).includes(d.hero)) partners.add(pickName);
+                });
+                if (d.sync && d.sync !== '—') {
+                    d.sync.split(',').map(s => s.trim()).forEach(name => { if (myPicks.includes(name)) partners.add(name); });
+                }
+                if (partners.size > 0) { score += partners.size * 14; reasons.push(`ăn ý với ${[...partners].join(', ')}`); }
+
+                // 5. Lấp nhu cầu đang thiếu của đội hình
+                const dType = getDamageType(d.hero);
+                if (needs.includes(dType)) { score += 24; reasons.push(dType === 'magic' ? 'bổ sung sát thương Phép' : 'bổ sung sát thương Vật lý'); }
+                (heroTools[d.hero] || []).forEach(t => {
+                    if (needs.includes(t)) { score += 20; reasons.push(`bổ sung ${toolLabels[t]}`); }
+                    else if (!myTools.has(t) && (t === 'engage' || t === 'peel' || t === 'frontline')) { score += 5; }
+                });
+
+                // 6. Sức mạnh meta
+                score += (7 - tierRank(d.tier)) * 4;
+
+                return { d, score, reasons };
+            }).sort((a, b) => b.score - a.score);
         }
 
         function renderAdvice() {
@@ -959,69 +1143,83 @@
 
             if (step.type === 'ban') {
                 if (oppPicks.length > 0) {
+                    // Ban phase 2: đối phương đã lộ bài -> target ban theo vị trí họ CÒN THIẾU, không chỉ counter tướng vừa pick
                     const lastPickName = oppPicks[oppPicks.length - 1];
                     const lastMeta = draftData.find(d => d.hero === lastPickName);
                     const heroData = allHeroes.find(h => h.name === lastPickName);
-                    context = `<span class="text-slate-300">Đối phương vừa Pick <b class="text-rose-400">${lastPickName}</b> (${heroData.class}${lastMeta ? `, Tier ${lastMeta.tier}` : ''}).</span>`;
+                    context = `<span class="text-slate-300">Đối phương đã Pick: <b class="text-rose-400">${oppPicks.join(', ')}</b>. Họ còn thiếu: <b class="text-amber-300">${oppOpenPos.join(', ') || 'không còn trống'}</b>.</span>`;
 
-                    const counterNames = lastMeta ? lastMeta.counter.split(' / ').map(s => s.trim()) : [];
-                    const availableCounters = available.filter(d => counterNames.includes(d.hero));
-                    const topThreats = available.filter(d => tierRank(d.tier) <= 1 && d.hero !== lastPickName).slice(0, 3);
-
-                    if (availableCounters.length > 0) {
-                        action = `Ban trực tiếp counter của ${lastPickName}: <b class="text-emerald-400">${describeSuggestions(availableCounters)}</b>.`;
-                        reason = `Đây là những tướng khắc chế trực tiếp ${lastPickName} vẫn còn trống — cấm sẽ buộc đối phương phải xoay hướng draft.`;
-                    } else if (topThreats.length > 0) {
-                        action = `Không còn counter trực tiếp trống, nên Ban các mối đe dọa top-tier khác: <b class="text-emerald-400">${describeSuggestions(topThreats)}</b>.`;
-                        reason = `Đối phương vẫn còn vị trí ${oppOpenPos.join(', ') || '—'} chưa lấy — ưu tiên cấm tướng S+/S mạnh nhất để hạn chế lựa chọn của họ.`;
-                    } else {
-                        action = "Ban theo tướng tủ của player đối phương hoặc tướng flex còn lại.";
-                        reason = "Pool top-tier đã cạn, hãy dựa vào scouting player thay vì tier chung.";
+                    const sections = [];
+                    // Target ban: tướng mạnh nhất thuộc đúng vị trí đối phương còn trống
+                    const targetBans = available.filter(d => oppOpenPos.includes(d.pos)).slice(0, 3);
+                    if (targetBans.length > 0) {
+                        sections.push(`<div class="mb-2">${priorityBadge[1]} <b class="text-rose-300">🎯 Target Ban theo vị trí thiếu:</b> ${describeSuggestions(targetBans)}</div>`);
                     }
+                    // Counter-deny: cấm tướng khắc chế đội hình mình đang xây
+                    const myThreats = myPicks.length > 0
+                        ? available.filter(d => myPicks.some(mp => {
+                            const mm = draftData.find(x => x.hero === mp);
+                            return mm && mm.counter.split(' / ').map(s => s.trim()).includes(d.hero);
+                        })).slice(0, 3)
+                        : [];
+                    if (myThreats.length > 0) {
+                        sections.push(`<div>${priorityBadge[2]} <b class="text-amber-300">🛡️ Cấm tướng khắc chế đội mình:</b> ${describeSuggestions(myThreats)}</div>`);
+                    }
+                    if (sections.length === 0) {
+                        const counterNames = lastMeta ? lastMeta.counter.split(' / ').map(s => s.trim()) : [];
+                        const availableCounters = available.filter(d => counterNames.includes(d.hero));
+                        sections.push(availableCounters.length > 0
+                            ? `<div>Ban counter của ${lastPickName}: ${describeSuggestions(availableCounters)}</div>`
+                            : `<div>Ban theo tướng tủ của player đối phương hoặc tướng flex còn lại.</div>`);
+                    }
+                    action = sections.join('');
+                    reason = `Giai đoạn ban 2 nên ép vị trí đối phương chưa lấy (${oppOpenPos.join(', ') || '—'}) xuống pool hạng 2, đồng thời chặn trước tướng có thể khắc chế đội hình mình.`;
                 } else {
                     const topBans = available.slice(0, 3);
-                    context = `<span class="text-slate-300">Giai đoạn Cấm đầu trận (Phase 1).</span>`;
+                    context = `<span class="text-slate-300">Giai đoạn Cấm đầu trận (Phase 1) — chưa ai lộ bài.</span>`;
                     action = topBans.length > 0
-                        ? `Ưu tiên Deny First Pick hoặc Target Ban vào: <b class="text-emerald-400">${describeSuggestions(topBans)}</b>.`
+                        ? `${priorityBadge[2]} Ưu tiên Deny First Pick hoặc Target Ban vào: ${describeSuggestions(topBans)}`
                         : "Ưu tiên Deny First Pick hoặc Target Ban.";
                     reason = "Chưa có đội hình để đọc vị, hãy cấm các tướng S+ có Threat cao nhất hiện còn hoặc tướng tủ của player đối phương.";
                 }
             } else {
-                if (myPicks.length === 0) {
-                    const flexPicks = available.filter(d => d.flex && d.flex !== '—').slice(0, 3);
-                    context = `<span class="text-slate-300">Đây là First Pick của bạn.</span>`;
-                    action = flexPicks.length > 0
-                        ? `Chọn tướng Tier cao có khả năng Flex: <b class="text-emerald-400">${describeSuggestions(flexPicks)}</b>.`
-                        : "Chọn tướng Tier S+ hoặc có Khả năng Flex (Đổi vị trí).";
-                    reason = "Chọn tướng linh hoạt sẽ làm khó đối phương không biết đường để Counter ở lượt Ban tiếp theo.";
-                } else {
-                    const myWc = myPicks.map(p => { const d = draftData.find(x => x.hero === p); return d ? d.wc_type : null; }).filter(Boolean);
-                    const mismatchWarning = (myWc.includes('snowball') && myWc.includes('late'))
-                        ? `<div class="mt-2 text-rose-400 text-xs font-bold">⚠️ Đội hình đang lẫn cả Early Snowball và Late Game — cân nhắc ưu tiên 1 hướng thắng rõ ràng.</div>` : '';
+                const myWc = myPicks.map(p => { const d = draftData.find(x => x.hero === p); return d ? d.wc_type : null; }).filter(Boolean);
+                const mismatchWarning = (myWc.includes('snowball') && myWc.includes('late'))
+                    ? `<div class="mt-2 text-rose-400 text-xs font-bold">⚠️ Đội hình đang lẫn cả Early Snowball và Late Game — cân nhắc ưu tiên 1 hướng thắng rõ ràng.</div>` : '';
 
-                    const posPriority = myOpenPos[0];
-                    const posCandidates = available.filter(d => d.pos === posPriority).slice(0, 3);
-                    const lastPick = myPicks[myPicks.length - 1];
-                    const heroData = allHeroes.find(h => h.name === lastPick);
-                    context = `<span class="text-slate-300">Đội bạn vừa Pick <b class="text-blue-400">${lastPick}</b> (${heroData.class}). Vị trí còn trống: <b class="text-cyan-400">${myOpenPos.join(', ') || 'Đã đủ 5 vị trí'}</b>.</span>`;
+                // Lượt pick cuối cùng của mình mà đối phương không còn lượt pick nào sau đó = quyền hard-counter
+                const hasLastPick = !draftSteps.slice(simStep + 1).some(s => s.type === 'pick' && s.team === opponent);
 
-                    if (myPicks.length < 3) {
-                        action = posCandidates.length > 0
-                            ? `Ưu tiên lấp vị trí ${posPriority}: <b class="text-emerald-400">${describeSuggestions(posCandidates)}</b>.`
-                            : `Bổ sung Tuyến trước (Đỡ đòn) hoặc Trợ thủ (Engage/Peel) cho vị trí ${posPriority}.`;
-                        reason = "Cần khung đội hình vững trước khi dồn hết vào sát thương, tránh bị đối phương Counter tỷ lệ số người." + mismatchWarning;
-                    } else {
-                        const oppLastPick = oppPicks.length > 0 ? oppPicks[oppPicks.length - 1] : null;
-                        const oppThreat = oppLastPick ? draftData.find(d => d.hero === oppLastPick) : null;
-                        const oppCounters = oppThreat ? available.filter(d => oppThreat.counter.split(' / ').map(s => s.trim()).includes(d.hero)) : [];
-                        const finalCandidates = oppCounters.length > 0 ? oppCounters : posCandidates;
-                        context += ` <span class="text-slate-300">Giai đoạn hoàn thiện đội hình (Lượt ${myPicks.length + 1}/5).</span>`;
-                        action = finalCandidates.length > 0
-                            ? `Pick counter đội hình đối phương hoặc lấp vị trí ${posPriority}: <b class="text-emerald-400">${describeSuggestions(finalCandidates)}</b>.`
-                            : "Pick Counter trực tiếp đội hình đối phương hoặc lấp khoảng trống cuối cùng.";
-                        reason = `Đối phương còn thiếu vị trí: ${oppOpenPos.join(', ') || 'không còn trống'}. Ưu tiên khóa mục tiêu chủ lực của họ hoặc lấp vị trí còn thiếu của đội mình.` + mismatchWarning;
-                    }
+                const sections = [];
+                const ranked = buildRankedPicks(available, myPicks, oppPicks, myOpenPos);
+                const warnings = buildCompWarnings(myPicks);
+
+                context = `<span class="text-slate-300">${myPicks.length > 0 ? `Đội bạn: <b class="text-blue-400">${myPicks.join(', ')}</b>. ` : ''}${oppPicks.length > 0 ? `Đối phương: <b class="text-rose-400">${oppPicks.join(', ')}</b>. ` : ''}Vị trí còn trống: <b class="text-cyan-400">${myOpenPos.join(', ') || 'Đã đủ 5 vị trí'}</b>.</span>`;
+
+                if (hasLastPick && oppPicks.length > 0) {
+                    sections.push(`<div class="mb-2 text-emerald-300 font-bold">👑 Bạn giữ Last Pick — đối phương không còn lượt pick nào để phản đòn, cứ hard-counter thẳng, không cần giấu bài.</div>`);
                 }
+
+                // Cảnh báo mất cân bằng đội hình (sát thương / công cụ), sắp theo mức ưu tiên
+                if (warnings.length > 0) {
+                    sections.push(`<div class="mb-2">` + warnings.slice(0, 2).map(w => `<div class="mb-1">${priorityBadge[w.level]} <span class="text-slate-200">${w.text}</span></div>`).join('') + `</div>`);
+                }
+
+                // Bảng xếp hạng gợi ý tổng hợp
+                const topPicks = ranked.filter(x => x.score > 0).slice(0, 3);
+                if (topPicks.length > 0) {
+                    sections.push(`<div class="mb-2"><b class="text-amber-300">⭐ Lựa chọn tối ưu:</b><div class="mt-1 space-y-1">` +
+                        topPicks.map(x => `<div>${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span></div>`).join('') +
+                        `</div></div>`);
+                } else if (myPicks.length === 0 && oppPicks.length === 0) {
+                    const flexPicks = available.filter(d => d.flex && d.flex !== '—').slice(0, 3);
+                    sections.push(`<div>Chọn tướng Tier cao có khả năng Flex: ${describeSuggestions(flexPicks)}</div>`);
+                }
+
+                action = sections.join('');
+                reason = (myPicks.length === 0 && oppPicks.length === 0)
+                    ? "First Pick chưa lộ bài: ưu tiên tướng linh hoạt (Flex) để đối phương không đoán được đường đi mà counter."
+                    : "Điểm ưu tiên tính gộp: lấp vị trí trống + khắc chế đối phương + ăn ý đồng đội + bù nhu cầu đội hình + sức mạnh meta." + mismatchWarning;
             }
             const targetSlot = myTeam === 'blue' ? blueSlot : redSlot;
             targetSlot.classList.remove('hidden');
@@ -1268,6 +1466,7 @@
             document.getElementById('sim-finish-panel').classList.add('hidden');
             document.getElementById('sim-post-draft').classList.add('hidden');
             document.getElementById('sim-next-step').innerText = `Bắt đầu: ${draftSteps[0].label}`;
+            document.getElementById('sim-counter-title').innerText = 'Gợi ý Đối Phương (Counter)';
             document.getElementById('sim-counter-info').innerHTML = `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`;
             updateSimUI();
             renderSimPool();
