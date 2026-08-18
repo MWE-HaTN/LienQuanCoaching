@@ -344,6 +344,7 @@
                     </div>
                     <div id="sim-finish-panel" class="hidden text-emerald-400 font-bold text-xl text-center">🎉 DRAFT HOÀN TẤT! Chúc may mắn.</div>
                 </div>
+                <div id="sim-pick-risk" class="hidden w-full mt-3 text-xs bg-slate-800/60 border border-slate-700 rounded px-3 py-2 leading-relaxed"></div>
                 <div class="flex flex-wrap items-center justify-center gap-3 mt-3 pt-3 border-t border-slate-700">
                     <button onclick="undoSimAction()" id="sim-undo-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded text-xs font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed" disabled>↩ Hoàn tác</button>
                     <div class="flex items-center gap-2">
@@ -855,6 +856,7 @@
             document.getElementById('sim-action-panel').classList.remove('hidden');
             document.getElementById('sim-action-panel').classList.add('flex');
             document.getElementById('sim-idle-panel').classList.add('hidden');
+            renderSelectionRisk(heroName);
         }
 
         function cancelSimSelect() {
@@ -862,6 +864,7 @@
             document.getElementById('sim-action-panel').classList.add('hidden');
             document.getElementById('sim-action-panel').classList.remove('flex');
             document.getElementById('sim-idle-panel').classList.remove('hidden');
+            document.getElementById('sim-pick-risk').classList.add('hidden');
         }
 
         function confirmSimAction() {
@@ -1284,6 +1287,112 @@
             }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
         }
 
+        // --- GIÁ TRỊ THẬT CỦA MỘT LƯỢT CẤM ---
+        // Cấm một tướng chỉ thực sự lấy đi thứ gì đó nếu đối phương KHÔNG còn tướng thay thế tương đương
+        // ở cùng vị trí. Cấm Sinestrea trong khi Billow vẫn còn = họ chỉ đổi tên, đội hình không yếu đi.
+        // Giá trị cấm = điểm tướng bị cấm − điểm tướng tốt nhất còn lại phục vụ cùng vị trí đó.
+        function servedPositions(d, oppOpenPos) {
+            const list = [];
+            if (oppOpenPos.includes(d.pos)) list.push(d.pos);
+            if (d.flex && d.flex !== '—' && oppOpenPos.includes(d.flex)) list.push(d.flex);
+            return list;
+        }
+
+        function withBanValue(rankedBans, oppOpenPos) {
+            return rankedBans.map(x => {
+                const mine = servedPositions(x.d, oppOpenPos);
+                // rankedBans đã sắp giảm dần -> phần tử đầu tiên khớp vị trí chính là tướng thay thế tốt nhất của họ
+                const alt = rankedBans.find(y => y.d.hero !== x.d.hero && servedPositions(y.d, oppOpenPos).some(p => mine.includes(p)));
+                const gap = Math.round(alt ? x.score - alt.score : x.score);
+                return { ...x, alt: alt ? alt.d : null, gap, banValue: x.score + Math.min(Math.max(gap, 0), 25) };
+            }).sort((a, b) => b.banValue - a.banValue);
+        }
+
+        function banValueBadge(gap) {
+            if (gap >= 20) return '<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">CẤM ĐÁNG GIÁ</span>';
+            if (gap >= 8) return '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">CẤM VỪA PHẢI</span>';
+            return '<span class="bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">CẤM PHÍ LƯỢT</span>';
+        }
+
+        function banValueNote(x) {
+            if (!x.alt) return `<span class="text-emerald-300">không còn tướng nào trong Meta Pool thay được vai này của họ</span>`;
+            if (x.gap < 8) return `<span class="text-rose-300">cấm xong họ chuyển sang ${x.alt.hero} (${x.alt.tier}) là gần như không mất gì</span>`;
+            return `<span class="text-slate-400">thay thế tốt nhất còn lại của họ là ${x.alt.hero} (${x.alt.tier}), kém hơn rõ rệt</span>`;
+        }
+
+        // --- ĐỘ SÂU POOL THEO VỊ TRÍ ---
+        // Dùng được cả khi gặp đội lạ (Bo1) vì không cần biết trước tướng tủ của ai:
+        // chỉ đếm xem mỗi vị trí họ còn bao nhiêu lựa chọn mạnh (S+/S) trong pool.
+        function buildPositionDepth(available, oppOpenPos) {
+            return oppOpenPos.map(p => {
+                const strong = available.filter(d => tierRank(d.tier) <= 1 && (d.pos === p || (d.flex && d.flex !== '—' && d.flex === p)));
+                return { pos: p, count: strong.length, names: strong.slice(0, 3).map(d => d.hero) };
+            }).sort((a, b) => a.count - b.count);
+        }
+
+        function renderDepthLine(depth) {
+            if (depth.length === 0) return '';
+            const parts = depth.map(x => {
+                const cls = x.count === 0 ? 'text-slate-500' : x.count <= 2 ? 'text-emerald-300' : x.count <= 3 ? 'text-amber-300' : 'text-rose-300';
+                return `<span class="${cls}"><b>${x.pos}: ${x.count}</b>${x.names.length ? ` <span class="font-normal">(${x.names.join(', ')})</span>` : ''}</span>`;
+            });
+            const shallow = depth.find(x => x.count > 0 && x.count <= 2);
+            const deep = depth[depth.length - 1];
+            let verdict = '';
+            if (shallow) verdict += ` → <b class="text-emerald-300">${shallow.pos}</b> là vị trí mỏng nhất của họ, cấm ở đây tạo khan hiếm nhanh nhất.`;
+            if (deep && deep.count >= 4) verdict += ` Cấm ở <b class="text-rose-300">${deep.pos}</b> gần như vô nghĩa — họ còn ${deep.count} tướng tương đương.`;
+            return `<div class="mb-2"><b class="text-cyan-300">📊 Lựa chọn mạnh (S+/S) họ còn theo vị trí:</b> ${parts.join(' · ')}${verdict}</div>`;
+        }
+
+        // --- KIỂM TRA NGƯỢC TRƯỚC KHI KHÓA LƯỢT: nước này để lại gì cho đối phương? ---
+        function renderSelectionRisk(heroName) {
+            const el = document.getElementById('sim-pick-risk');
+            if (!el) return;
+            if (simStep >= draftSteps.length) { el.classList.add('hidden'); return; }
+            const step = draftSteps[simStep];
+            const opponent = step.team === 'blue' ? 'red' : 'blue';
+            const oppOpenPos = getOpenPositions(opponent);
+            const oppPicks = simState[opponent].pick.filter(h => h);
+            const myPicks = simState[step.team].pick.filter(h => h);
+            const oppPicksLeft = draftSteps.slice(simStep + 1).filter(s => s.type === 'pick' && s.team === opponent).length;
+            const available = getAvailableDraftPool();
+            const meta = draftData.find(d => d.hero === heroName);
+            let html = '';
+
+            if (step.type === 'pick') {
+                if (oppPicksLeft === 0) {
+                    html = `<span class="text-emerald-300 font-bold">✅ Đối phương đã hết lượt pick — không còn cách nào phản đòn nước này.</span>`;
+                } else if (!meta) {
+                    html = `<span class="text-slate-400">${heroName} chưa có dữ liệu counter trong Meta Pool — tự cân nhắc xem đối phương còn tướng nào đối trọng được (họ còn ${oppPicksLeft} lượt pick).</span>`;
+                } else {
+                    const counterNames = meta.counter.split(' / ').map(s => s.trim());
+                    const live = available.filter(d => d.hero !== heroName && counterNames.includes(d.hero) && servedPositions(d, oppOpenPos).length > 0);
+                    html = live.length > 0
+                        ? `<span class="text-rose-300 font-bold">⚠️ Nếu khóa ${heroName} bây giờ:</span> <span class="text-slate-300">đối phương vẫn còn <b class="text-rose-300">${live.map(d => `${d.hero} (${d.tier})`).join(', ')}</b> để đối trọng, và họ còn <b class="text-amber-300">${oppPicksLeft}</b> lượt pick.${live.length >= 2 ? ' Cân nhắc lấy tướng an toàn trước, để dành nước này cho lượt sau.' : ''}</span>`
+                        : `<span class="text-emerald-300 font-bold">✅ Khóa ${heroName} an toàn:</span> <span class="text-slate-300">mọi tướng khắc chế ${heroName} đều đã bị cấm/lấy, hoặc không còn vị trí trống để đối phương dùng (họ còn ${oppPicksLeft} lượt pick).</span>`;
+                }
+            } else if (oppPicks.length === 0) {
+                // Phase 1: mọi tướng cùng tier đều ngang điểm nên chưa đo được "chênh với tướng thay thế"
+                const depth = buildPositionDepth(available, oppOpenPos).find(x => meta && x.pos === meta.pos);
+                const left = depth ? depth.count - (meta && tierRank(meta.tier) <= 1 ? 1 : 0) : null;
+                html = meta
+                    ? `<span class="text-slate-300">Cấm ${heroName}: ${meta.pos} của họ sẽ còn <b class="${left !== null && left <= 2 ? 'text-emerald-300' : 'text-amber-300'}">${left !== null ? left : '?'}</b> lựa chọn mạnh${left !== null && left >= 3 ? ' — họ thay thế dễ, cấm con này là để deny threat chứ chưa siết được vị trí' : ' — cấm ở đây siết pool khá tốt'}.</span>`
+                    : `<span class="text-slate-400">${heroName} không nằm trong Meta Pool — chỉ nên cấm nếu bạn biết chắc đây là tướng tủ của đối phương.</span>`;
+            } else {
+                const ranked = withBanValue(buildRankedBans(available, myPicks, oppPicks, oppOpenPos), oppOpenPos);
+                const entry = ranked.find(x => x.d.hero === heroName);
+                if (entry) {
+                    html = `${banValueBadge(entry.gap)} <span class="text-slate-300 ml-1">Cấm ${heroName}: ${banValueNote(entry)}.</span>`;
+                } else if (meta) {
+                    html = `<span class="text-rose-300 font-bold">⚠️ Phí lượt cấm:</span> <span class="text-slate-300">đối phương đã kín vị trí ${meta.pos}${meta.flex && meta.flex !== '—' ? ` và ${meta.flex}` : ''} — họ không còn pick được ${heroName} nữa.</span>`;
+                } else {
+                    html = `<span class="text-slate-400">${heroName} không nằm trong Meta Pool — chỉ nên cấm nếu bạn biết chắc đây là tướng tủ của đối phương.</span>`;
+                }
+            }
+            el.innerHTML = html;
+            el.classList.remove('hidden');
+        }
+
         function renderAdvice() {
             const adviceBox = document.getElementById('sim-advice-box');
             const blueSlot = document.getElementById('blue-advice');
@@ -1321,28 +1430,50 @@
                     const forced = oppPicksLeft > 0 && oppPicksLeft === oppOpenPos.length;
                     context = `<span class="text-slate-300">Đối phương đã Pick: <b class="text-rose-400">${oppPicks.join(', ')}</b>. Còn <b class="text-amber-300">${oppPicksLeft} lượt pick</b> cho <b class="text-amber-300">${oppOpenPos.join(', ')}</b>${oppFilledPos.length > 0 ? ` — đã kín <b class="text-slate-500">${oppFilledPos.join(', ')}</b> (cấm vị trí này là phí lượt)` : ''}.</span>`;
 
-                    const rankedBans = buildRankedBans(available, myPicks, oppPicks, oppOpenPos);
+                    const rankedBans = withBanValue(buildRankedBans(available, myPicks, oppPicks, oppOpenPos), oppOpenPos);
                     const sections = [];
 
                     if (forced) {
                         sections.push(`<div class="mb-2 text-emerald-300 font-bold">🔒 Họ còn đúng ${oppPicksLeft} lượt pick cho ${oppOpenPos.length} vị trí trống — buộc phải lấy tướng ở ${oppOpenPos.join(' và ')}, không né đi đâu được. Cấm vào đây là ép trực tiếp.</div>`);
                     }
+                    sections.push(renderDepthLine(buildPositionDepth(available, oppOpenPos)));
                     if (rankedBans.length > 0) {
-                        sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-1">` +
-                            rankedBans.slice(0, 3).map((x, i) => `<div>${priorityBadge[i === 0 ? 1 : 2]} ${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span></div>`).join('') +
+                        sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-2">` +
+                            rankedBans.slice(0, 3).map(x => `<div>${banValueBadge(x.gap)} ${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span><div class="text-[11px] ml-1 mt-0.5">↳ ${banValueNote(x)}</div></div>`).join('') +
                             `</div></div>`);
                     } else {
                         sections.push(`<div>Không còn tướng đáng cấm trong Meta Pool cho các vị trí đối phương còn trống — cân nhắc cấm theo tướng tủ của player.</div>`);
                     }
                     action = sections.join('');
-                    reason = `Lượt cấm chỉ có giá trị khi đối phương còn pick được tướng đó. Ưu tiên: tướng lấp đúng vị trí họ còn trống > khắc chế đội hình mình > phá combo/bù chỗ thiếu của họ > tier cao.`;
+                    reason = `Một lượt cấm chỉ đáng giá khi đối phương (a) còn pick được tướng đó, và (b) <b>không có tướng thay thế tương đương ở cùng vị trí</b> — cấm mà họ chỉ đổi sang tướng ngang cơ thì coi như bỏ lượt.`;
                 } else {
-                    const topBans = available.slice(0, 3);
-                    context = `<span class="text-slate-300">Giai đoạn Cấm đầu trận (Phase 1) — chưa ai lộ bài.</span>`;
-                    action = topBans.length > 0
-                        ? `${priorityBadge[2]} Ưu tiên Deny First Pick hoặc Target Ban vào: ${describeSuggestions(topBans)}`
-                        : "Ưu tiên Deny First Pick hoặc Target Ban.";
-                    reason = "Chưa có đội hình để đọc vị, hãy cấm các tướng S+ có Threat cao nhất hiện còn hoặc tướng tủ của player đối phương.";
+                    // Phase 1: chưa ai pick nên mọi tướng cùng tier đều ngang điểm -> chỉ số "chênh với tướng thay thế"
+                    // chưa có ý nghĩa. Tín hiệu dùng được lúc này là ĐỘ SÂU của từng vị trí trong pool.
+                    context = `<span class="text-slate-300">Giai đoạn Cấm đầu trận (Phase 1) — chưa ai lộ bài, cả 5 vị trí của họ đều còn trống.</span>`;
+                    const depth = buildPositionDepth(available, oppOpenPos);
+                    const depthMap = {};
+                    depth.forEach(x => { depthMap[x.pos] = x.count; });
+                    const thinnest = depth.find(x => x.count > 0);
+                    const rankedBans = buildRankedBans(available, myPicks, oppPicks, oppOpenPos)
+                        .map(x => ({ ...x, depth: depthMap[x.d.pos] !== undefined ? depthMap[x.d.pos] : 99 }))
+                        .sort((a, b) => (tierRank(a.d.tier) - tierRank(b.d.tier)) || (a.depth - b.depth));
+                    const sections = [renderDepthLine(depth)];
+
+                    if (thinnest && thinnest.count >= 4) {
+                        sections.push(`<div class="mb-2 text-slate-400">ℹ️ Chưa vị trí nào khan hiếm (mỏng nhất là <b class="text-slate-300">${thinnest.pos}</b> vẫn còn ${thinnest.count} lựa chọn mạnh) — cấm lúc này khó siết được pool, tướng nào cấm đi họ cũng có con ngang cơ thay thế. Đây là lượt để <b class="text-slate-300">deny First Pick / cấm tướng threat</b>, còn giá trị cấm thật sự sẽ rõ ở Ban 3-4.</div>`);
+                    }
+                    if (rankedBans.length > 0) {
+                        sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-2">` +
+                            rankedBans.slice(0, 3).map((x, i) => {
+                                const left = x.depth - (tierRank(x.d.tier) <= 1 ? 1 : 0); // trừ chính tướng sắp cấm
+                                return `<div>${priorityBadge[i === 0 ? 2 : 3]} ${heroChip(x.d)}<div class="text-[11px] ml-1 mt-0.5 ${left <= 2 ? 'text-emerald-300' : 'text-slate-400'}">↳ cấm xong ${x.d.pos} của họ còn ${left} lựa chọn mạnh${left <= 2 ? ' — siết pool nhanh nhất trong các phương án' : ' — họ thay thế được dễ, cấm vì bản thân tướng mạnh chứ không siết được vị trí'}</div></div>`;
+                            }).join('') +
+                            `</div></div>`);
+                    } else {
+                        sections.push(`<div>${priorityBadge[2]} Ưu tiên Deny First Pick hoặc Target Ban.</div>`);
+                    }
+                    action = sections.join('');
+                    reason = "Chưa có đội hình để đọc vị, nên ưu tiên tier cao và <b>vị trí ít lựa chọn mạnh nhất</b> — cấm vào vị trí còn 5-8 tướng ngang cơ thì đối phương chỉ việc lấy con khác.";
                 }
             } else {
                 const myWc = myPicks.map(p => { const d = draftData.find(x => x.hero === p); return d ? d.wc_type : null; }).filter(Boolean);
@@ -1725,6 +1856,7 @@
             document.getElementById('sim-next-step').innerText = `Bắt đầu: ${draftSteps[0].label}`;
             document.getElementById('sim-counter-title').innerText = 'Gợi ý Đối Phương (Counter)';
             document.getElementById('sim-counter-info').innerHTML = `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`;
+            cancelSimSelect(); // xóa tướng đang chọn dở, tránh để lại panel thao tác/cảnh báo cũ
             updateSimUI();
             renderSimPool();
             renderAdvice();
