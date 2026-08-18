@@ -1235,6 +1235,55 @@
             }).sort((a, b) => b.score - a.score);
         }
 
+        // --- BỘ MÁY CHẤM ĐIỂM GỢI Ý BAN ---
+        // Nguyên tắc cốt lõi của HLV: một lượt cấm chỉ có giá trị khi đối phương THỰC SỰ còn pick được tướng đó.
+        // Đối phương đã lấp kín vị trí nào thì cấm tướng vị trí đó là phí lượt cấm, dù tướng đó mạnh hay khắc chế mình.
+        function buildRankedBans(available, myPicks, oppPicks, oppOpenPos) {
+            const oppNeeds = buildCompWarnings(oppPicks).map(w => w.need);
+            return available.map(d => {
+                let score = 0;
+                const reasons = [];
+
+                // 1. BẮT BUỘC: đối phương còn chỗ cho tướng này không?
+                const openForPos = oppOpenPos.includes(d.pos);
+                const openForFlex = d.flex && d.flex !== '—' && oppOpenPos.includes(d.flex);
+                if (!openForPos && !openForFlex) return { d, score: -999, reasons: [] };
+                if (openForPos) { score += 25; reasons.push(`họ còn trống ${d.pos}`); }
+                else { score += 15; reasons.push(`họ có thể flex vào ${d.flex}`); }
+
+                // 2. Tướng này khắc chế đội hình mình đang xây
+                myPicks.forEach(mp => {
+                    const mm = draftData.find(x => x.hero === mp);
+                    if (mm && mm.counter.split(' / ').map(s => s.trim()).includes(d.hero)) {
+                        score += 30; reasons.push(`khắc chế ${mp} của mình`);
+                    }
+                });
+
+                // 3. Ăn ý với đội hình đối phương -> cấm để phá combo của họ
+                const partners = new Set();
+                oppPicks.forEach(op => {
+                    const om = draftData.find(x => x.hero === op);
+                    if (om && om.sync && om.sync !== '—' && om.sync.split(',').map(s => s.trim()).includes(d.hero)) partners.add(op);
+                });
+                if (d.sync && d.sync !== '—') {
+                    d.sync.split(',').map(s => s.trim()).forEach(n => { if (oppPicks.includes(n)) partners.add(n); });
+                }
+                if (partners.size > 0) { score += partners.size * 12; reasons.push(`ăn ý với ${[...partners].join(', ')} của họ`); }
+
+                // 4. Lấp đúng thứ đội hình đối phương đang thiếu
+                const dType = getDamageType(d.hero);
+                if (oppNeeds.includes(dType)) { score += 18; reasons.push(dType === 'magic' ? 'là nguồn Phép họ đang thiếu' : 'là nguồn Vật lý họ đang thiếu'); }
+                (heroTools[d.hero] || []).forEach(t => {
+                    if (oppNeeds.includes(t)) { score += 16; reasons.push(`bù ${toolLabels[t]} họ đang thiếu`); }
+                });
+
+                // 5. Sức mạnh meta
+                score += (7 - tierRank(d.tier)) * 4;
+
+                return { d, score, reasons };
+            }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+        }
+
         function renderAdvice() {
             const adviceBox = document.getElementById('sim-advice-box');
             const blueSlot = document.getElementById('blue-advice');
@@ -1266,37 +1315,24 @@
 
             if (step.type === 'ban') {
                 if (oppPicks.length > 0) {
-                    // Ban phase 2: đối phương đã lộ bài -> target ban theo vị trí họ CÒN THIẾU, không chỉ counter tướng vừa pick
-                    const lastPickName = oppPicks[oppPicks.length - 1];
-                    const lastMeta = draftData.find(d => d.hero === lastPickName);
-                    const heroData = allHeroes.find(h => h.name === lastPickName);
-                    context = `<span class="text-slate-300">Đối phương đã Pick: <b class="text-rose-400">${oppPicks.join(', ')}</b>. Họ còn thiếu: <b class="text-amber-300">${oppOpenPos.join(', ') || 'không còn trống'}</b>.</span>`;
+                    // Ban phase 2: chỉ cấm tướng đối phương CÒN PICK ĐƯỢC — vị trí họ đã lấp kín thì cấm là phí lượt
+                    const oppFilledPos = ["Caesar", "Jungle", "Mid", "AD", "Support"].filter(p => !oppOpenPos.includes(p));
+                    context = `<span class="text-slate-300">Đối phương đã Pick: <b class="text-rose-400">${oppPicks.join(', ')}</b>. Còn trống: <b class="text-amber-300">${oppOpenPos.join(', ') || 'không còn'}</b>${oppFilledPos.length > 0 ? ` — đã kín <b class="text-slate-500">${oppFilledPos.join(', ')}</b> (cấm vị trí này là phí lượt)` : ''}.</span>`;
 
+                    const rankedBans = buildRankedBans(available, myPicks, oppPicks, oppOpenPos);
                     const sections = [];
-                    // Target ban: tướng mạnh nhất thuộc đúng vị trí đối phương còn trống
-                    const targetBans = available.filter(d => oppOpenPos.includes(d.pos)).slice(0, 3);
-                    if (targetBans.length > 0) {
-                        sections.push(`<div class="mb-2">${priorityBadge[1]} <b class="text-rose-300">🎯 Target Ban theo vị trí thiếu:</b> ${describeSuggestions(targetBans)}</div>`);
-                    }
-                    // Counter-deny: cấm tướng khắc chế đội hình mình đang xây
-                    const myThreats = myPicks.length > 0
-                        ? available.filter(d => myPicks.some(mp => {
-                            const mm = draftData.find(x => x.hero === mp);
-                            return mm && mm.counter.split(' / ').map(s => s.trim()).includes(d.hero);
-                        })).slice(0, 3)
-                        : [];
-                    if (myThreats.length > 0) {
-                        sections.push(`<div>${priorityBadge[2]} <b class="text-amber-300">🛡️ Cấm tướng khắc chế đội mình:</b> ${describeSuggestions(myThreats)}</div>`);
-                    }
-                    if (sections.length === 0) {
-                        const counterNames = lastMeta ? lastMeta.counter.split(' / ').map(s => s.trim()) : [];
-                        const availableCounters = available.filter(d => counterNames.includes(d.hero));
-                        sections.push(availableCounters.length > 0
-                            ? `<div>Ban counter của ${lastPickName}: ${describeSuggestions(availableCounters)}</div>`
-                            : `<div>Ban theo tướng tủ của player đối phương hoặc tướng flex còn lại.</div>`);
+
+                    if (oppOpenPos.length === 0) {
+                        sections.push(`<div class="text-amber-300">${priorityBadge[3]} Đối phương đã đủ 5 vị trí — lượt cấm này gần như không chặn được pick nào của họ. Hãy cấm theo tướng tủ của player hoặc tướng flex mạnh còn lại.</div>`);
+                    } else if (rankedBans.length > 0) {
+                        sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-1">` +
+                            rankedBans.slice(0, 3).map((x, i) => `<div>${priorityBadge[i === 0 ? 1 : 2]} ${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span></div>`).join('') +
+                            `</div></div>`);
+                    } else {
+                        sections.push(`<div>Không còn tướng đáng cấm trong Meta Pool cho các vị trí đối phương còn trống — cân nhắc cấm theo tướng tủ của player.</div>`);
                     }
                     action = sections.join('');
-                    reason = `Giai đoạn ban 2 nên ép vị trí đối phương chưa lấy (${oppOpenPos.join(', ') || '—'}) xuống pool hạng 2, đồng thời chặn trước tướng có thể khắc chế đội hình mình.`;
+                    reason = `Lượt cấm chỉ có giá trị khi đối phương còn pick được tướng đó. Ưu tiên: tướng lấp đúng vị trí họ còn trống > khắc chế đội hình mình > phá combo/bù chỗ thiếu của họ > tier cao.`;
                 } else {
                     const topBans = available.slice(0, 3);
                     context = `<span class="text-slate-300">Giai đoạn Cấm đầu trận (Phase 1) — chưa ai lộ bài.</span>`;
