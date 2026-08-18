@@ -523,30 +523,40 @@
         // DATA: TOÀN BỘ HERO POOL LIÊN QUÂN (Đã auto xây dựng Counter, Spike, Flex, WC)
         // 129 tướng — đối chiếu với danh sách chính thức tại lienquan.garena.vn/hoc-vien/tuong-skin/ (crawl 18/08/2026)
         const rawHeroes = [
-            { name: "Airi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Aleister", pos: "Support", class: "Pháp sư" }, { name: "Alice", pos: "Support", class: "Trợ thủ" }, { name: "Allain", pos: "Caesar", class: "Đấu sĩ" }, { name: "Amily", pos: "Caesar", class: "Đấu sĩ" }, { name: "Annette", pos: "Support", class: "Trợ thủ" }, { name: "Aoi", pos: "Jungle", class: "Sát thủ" }, { name: "Arduin", pos: "Caesar", class: "Đỡ đòn" }, { name: "Arum", pos: "Caesar", class: "Đỡ đòn" }, { name: "Astrid", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ata", pos: "Caesar", class: "Đỡ đòn" }, { name: "Aya", pos: "Support", class: "Trợ thủ" }, { name: "Azzen'Ka", pos: "Mid", class: "Pháp sư" },
-            { name: "Baldum", pos: "Support", class: "Đỡ đòn" }, { name: "Bijan", pos: "Caesar", class: "Đấu sĩ" }, { name: "Billow", pos: "Jungle", class: "Sát thủ" }, { name: "Biron", pos: "Caesar", class: "Đấu sĩ" }, { name: "Bolt Baron", pos: "Caesar", class: "Đấu sĩ" }, { name: "Bonnie", pos: "Mid", class: "Pháp sư" }, { name: "Bright", pos: "Jungle", class: "Sát thủ" }, { name: "Butterfly", pos: "Jungle", class: "Sát thủ" }, { name: "Capheny", pos: "AD", class: "Xạ thủ" }, { name: "Celica", pos: "AD", class: "Xạ thủ" }, { name: "Chaugnar", pos: "Support", class: "Trợ thủ" }, { name: "Charlotte", pos: "Caesar", class: "Đấu sĩ" }, { name: "Cresht", pos: "Support", class: "Trợ thủ" }, { name: "Điêu Thuyền", pos: "Mid", class: "Pháp sư" }, { name: "D'Arcy", pos: "Mid", class: "Pháp sư" }, { name: "Dirak", pos: "Mid", class: "Pháp sư" }, { name: "Dolia", pos: "Support", class: "Trợ thủ" }, { name: "Dyadia", pos: "Support", class: "Trợ thủ" }, { name: "Dextra", pos: "AD", class: "Xạ thủ" },
-            { name: "Eland'orr", pos: "Jungle", class: "Sát thủ" }, { name: "Edras", pos: "Caesar", class: "Đấu sĩ" }, { name: "Elsu", pos: "AD", class: "Xạ thủ" }, { name: "Enzo", pos: "Caesar", class: "Đấu sĩ" }, { name: "Errol", pos: "Caesar", class: "Đấu sĩ" }, { name: "Erin", pos: "AD", class: "Xạ thủ" }, { name: "Arthur", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Airi", pos: "Caesar", class: "Đấu sĩ", class2: "Sát thủ" }, { name: "Aleister", pos: "Support", class: "Pháp sư" }, { name: "Alice", pos: "Support", class: "Trợ thủ" }, { name: "Allain", pos: "Caesar", class: "Đấu sĩ" }, { name: "Amily", pos: "Caesar", class: "Đấu sĩ" }, { name: "Annette", pos: "Support", class: "Trợ thủ", class2: "Pháp sư" }, { name: "Aoi", pos: "Jungle", class: "Sát thủ" }, { name: "Arduin", pos: "Caesar", class: "Đỡ đòn", class2: "Đấu sĩ" }, { name: "Arum", pos: "Caesar", class: "Đỡ đòn", class2: "Trợ thủ" }, { name: "Astrid", pos: "Caesar", class: "Đấu sĩ", class2: "Sát thủ" }, { name: "Ata", pos: "Caesar", class: "Đỡ đòn" }, { name: "Aya", pos: "Support", class: "Trợ thủ" }, { name: "Azzen'Ka", pos: "Mid", class: "Pháp sư" },
+            { name: "Baldum", pos: "Support", class: "Đỡ đòn", class2: "Trợ thủ" }, { name: "Bijan", pos: "Caesar", class: "Đấu sĩ" }, { name: "Billow", pos: "Jungle", class: "Sát thủ" }, { name: "Biron", pos: "Caesar", class: "Đấu sĩ" }, { name: "Bolt Baron", pos: "Caesar", class: "Đấu sĩ" }, { name: "Bonnie", pos: "Mid", class: "Pháp sư" }, { name: "Bright", pos: "Jungle", class: "Sát thủ" }, { name: "Butterfly", pos: "Jungle", class: "Sát thủ", class2: "Đấu sĩ" }, { name: "Capheny", pos: "AD", class: "Xạ thủ" }, { name: "Celica", pos: "AD", class: "Xạ thủ" }, { name: "Chaugnar", pos: "Support", class: "Trợ thủ", class2: "Đỡ đòn" }, { name: "Charlotte", pos: "Caesar", class: "Đấu sĩ" }, { name: "Cresht", pos: "Support", class: "Trợ thủ", class2: "Đỡ đòn" }, { name: "Điêu Thuyền", pos: "Mid", class: "Pháp sư" }, { name: "D'Arcy", pos: "Mid", class: "Pháp sư" }, { name: "Dirak", pos: "Mid", class: "Pháp sư" }, { name: "Dolia", pos: "Support", class: "Trợ thủ" }, { name: "Dyadia", pos: "Support", class: "Trợ thủ" }, { name: "Dextra", pos: "AD", class: "Đấu sĩ", class2: "Đỡ đòn" },
+            { name: "Eland'orr", pos: "Jungle", class: "Xạ thủ" }, { name: "Edras", pos: "Caesar", class: "Đấu sĩ" }, { name: "Elsu", pos: "AD", class: "Xạ thủ" }, { name: "Enzo", pos: "Caesar", class: "Sát thủ" }, { name: "Errol", pos: "Caesar", class: "Đấu sĩ" }, { name: "Erin", pos: "AD", class: "Xạ thủ" }, { name: "Arthur", pos: "Caesar", class: "Đấu sĩ" },
             { name: "Fennik", pos: "AD", class: "Xạ thủ" }, { name: "Florentino", pos: "Caesar", class: "Đấu sĩ" }, { name: "Flowborn", pos: "AD", class: "Xạ thủ" },
-            { name: "Gildur", pos: "Mid", class: "Pháp sư" }, { name: "Goverra", pos: "Mid", class: "Pháp sư" }, { name: "Grakk", pos: "Support", class: "Đỡ đòn" },
+            { name: "Gildur", pos: "Mid", class: "Pháp sư", class2: "Đỡ đòn" }, { name: "Goverra", pos: "Mid", class: "Pháp sư" }, { name: "Grakk", pos: "Support", class: "Đỡ đòn", class2: "Trợ thủ" },
             { name: "Hayate", pos: "AD", class: "Xạ thủ" }, { name: "Heino", pos: "Mid", class: "Pháp sư" },
-            { name: "Iggy", pos: "Mid", class: "Pháp sư" }, { name: "Ignis", pos: "Mid", class: "Pháp sư" }, { name: "Ilumia", pos: "Mid", class: "Pháp sư" }, { name: "Ishar", pos: "Support", class: "Trợ thủ" },
+            { name: "Iggy", pos: "Mid", class: "Pháp sư" }, { name: "Ignis", pos: "Mid", class: "Pháp sư" }, { name: "Ilumia", pos: "Mid", class: "Pháp sư" }, { name: "Ishar", pos: "Support", class: "Trợ thủ", class2: "Pháp sư" },
             { name: "Jinna", pos: "Mid", class: "Pháp sư" },
-            { name: "Kahlii", pos: "Mid", class: "Pháp sư" }, { name: "Kaine", pos: "AD", class: "Xạ thủ" }, { name: "Keera", pos: "Jungle", class: "Sát thủ" }, { name: "Kil'Groth", pos: "Caesar", class: "Đấu sĩ" }, { name: "Kriknak", pos: "Jungle", class: "Sát thủ" }, { name: "Krixi", pos: "Mid", class: "Pháp sư" }, { name: "Krizzix", pos: "Support", class: "Trợ thủ" },
-            { name: "Laville", pos: "AD", class: "Xạ thủ" }, { name: "Lauriel", pos: "Mid", class: "Pháp sư" }, { name: "Liliana", pos: "Mid", class: "Pháp sư" }, { name: "Lindis", pos: "AD", class: "Xạ thủ" }, { name: "Lorion", pos: "Mid", class: "Pháp sư" }, { name: "Lumburr", pos: "Support", class: "Đỡ đòn" }, { name: "Lữ Bố", pos: "Caesar", class: "Đấu sĩ" },
-            { name: "Maloch", pos: "Caesar", class: "Đỡ đòn" }, { name: "Marja", pos: "Mid", class: "Pháp sư" }, { name: "Max", pos: "Caesar", class: "Đấu sĩ" }, { name: "Mganga", pos: "Mid", class: "Pháp sư" }, { name: "Ming", pos: "Support", class: "Trợ thủ" }, { name: "Mina", pos: "Support", class: "Đỡ đòn" }, { name: "Moren", pos: "AD", class: "Xạ thủ" }, { name: "Murad", pos: "Jungle", class: "Sát thủ" },
+            { name: "Kahlii", pos: "Mid", class: "Pháp sư" }, { name: "Kaine", pos: "AD", class: "Sát thủ" }, { name: "Keera", pos: "Jungle", class: "Sát thủ" }, { name: "Kil'Groth", pos: "Caesar", class: "Đấu sĩ" }, { name: "Kriknak", pos: "Jungle", class: "Sát thủ" }, { name: "Krixi", pos: "Mid", class: "Pháp sư" }, { name: "Krizzix", pos: "Support", class: "Trợ thủ" },
+            { name: "Laville", pos: "AD", class: "Xạ thủ" }, { name: "Lauriel", pos: "Mid", class: "Pháp sư" }, { name: "Liliana", pos: "Mid", class: "Pháp sư", class2: "Sát thủ" }, { name: "Lindis", pos: "AD", class: "Xạ thủ" }, { name: "Lorion", pos: "Mid", class: "Pháp sư" }, { name: "Lumburr", pos: "Support", class: "Đỡ đòn", class2: "Trợ thủ" }, { name: "Lữ Bố", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Maloch", pos: "Caesar", class: "Đỡ đòn", class2: "Đấu sĩ" }, { name: "Marja", pos: "Mid", class: "Pháp sư" }, { name: "Max", pos: "Caesar", class: "Đỡ đòn" }, { name: "Mganga", pos: "Mid", class: "Pháp sư" }, { name: "Ming", pos: "Support", class: "Trợ thủ" }, { name: "Mina", pos: "Support", class: "Đỡ đòn", class2: "Trợ thủ" }, { name: "Moren", pos: "AD", class: "Xạ thủ" }, { name: "Murad", pos: "Jungle", class: "Sát thủ" },
             { name: "Nakroth", pos: "Jungle", class: "Sát thủ" }, { name: "Natalya", pos: "Mid", class: "Pháp sư" }, { name: "Ngộ Không", pos: "Jungle", class: "Sát thủ" },
-            { name: "Omen", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ormarr", pos: "Caesar", class: "Đỡ đòn" }, { name: "Omega", pos: "Support", class: "Đỡ đòn" },
+            { name: "Omen", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ormarr", pos: "Caesar", class: "Đỡ đòn" }, { name: "Omega", pos: "Support", class: "Đỡ đòn", class2: "Trợ thủ" },
             { name: "Paine", pos: "Jungle", class: "Sát thủ" }, { name: "Helen", pos: "Support", class: "Trợ thủ" }, { name: "Preyta", pos: "Mid", class: "Pháp sư" },
-            { name: "Qi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Quillen", pos: "Jungle", class: "Sát thủ" },
-            { name: "Raz", pos: "Mid", class: "Đấu sĩ" }, { name: "Richter", pos: "Caesar", class: "Đấu sĩ" }, { name: "Rouie", pos: "Support", class: "Trợ thủ" }, { name: "Rourke", pos: "Caesar", class: "Đấu sĩ" }, { name: "Roxie", pos: "Support", class: "Đỡ đòn" }, { name: "Ryoma", pos: "Caesar", class: "Đấu sĩ" },
-            { name: "Sephera", pos: "Support", class: "Pháp sư" }, { name: "Sinestrea", pos: "Jungle", class: "Sát thủ" }, { name: "Skud", pos: "Caesar", class: "Đỡ đòn" }, { name: "Slimz", pos: "AD", class: "Xạ thủ" }, { name: "Superman", pos: "Caesar", class: "Đấu sĩ" }, { name: "Stuart", pos: "AD", class: "Xạ thủ" },
-            { name: "Tachi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Taara", pos: "Support", class: "Đỡ đòn" }, { name: "Tamyn", pos: "Jungle", class: "Đấu sĩ" }, { name: "TeeMee", pos: "Support", class: "Trợ thủ" }, { name: "Teeri", pos: "AD", class: "Xạ thủ" }, { name: "Tel'Annas", pos: "AD", class: "Xạ thủ" }, { name: "Thane", pos: "Support", class: "Đỡ đòn" }, { name: "The Flash", pos: "AD", class: "Xạ thủ" }, { name: "Thorne", pos: "AD", class: "Xạ thủ" }, { name: "Toro", pos: "Support", class: "Đỡ đòn" }, { name: "Triệu Vân", pos: "Caesar", class: "Đấu sĩ" }, { name: "Tulen", pos: "Mid", class: "Pháp sư" },
-            { name: "Valhein", pos: "AD", class: "Xạ thủ" }, { name: "Veera", pos: "Mid", class: "Pháp sư" }, { name: "Veres", pos: "Caesar", class: "Đấu sĩ" }, { name: "Violet", pos: "AD", class: "Xạ thủ" }, { name: "Volkath", pos: "Caesar", class: "Đấu sĩ" },
-            { name: "Wiro", pos: "Caesar", class: "Đấu sĩ" }, { name: "Wisp", pos: "AD", class: "Xạ thủ" }, { name: "Wonder Woman", pos: "Caesar", class: "Đấu sĩ" },
-            { name: "Xeniel", pos: "Support", class: "Đỡ đòn" },
-            { name: "Yan", pos: "Caesar", class: "Đấu sĩ" }, { name: "Yena", pos: "Caesar", class: "Đấu sĩ" }, { name: "Yorn", pos: "AD", class: "Xạ thủ" }, { name: "Yue", pos: "Mid", class: "Pháp sư" }, { name: "Y'bneth", pos: "Support", class: "Đỡ đòn" },
-            { name: "Zanis", pos: "Jungle", class: "Đấu sĩ" }, { name: "Zata", pos: "Mid", class: "Pháp sư" }, { name: "Zephys", pos: "Jungle", class: "Đấu sĩ" }, { name: "Zill", pos: "Jungle", class: "Sát thủ" }, { name: "Zip", pos: "Support", class: "Đỡ đòn" }, { name: "Zuka", pos: "Caesar", class: "Đấu sĩ" }
+            { name: "Qi", pos: "Caesar", class: "Đấu sĩ", class2: "Sát thủ" }, { name: "Quillen", pos: "Jungle", class: "Sát thủ" },
+            { name: "Raz", pos: "Mid", class: "Pháp sư", class2: "Sát thủ" }, { name: "Richter", pos: "Caesar", class: "Đấu sĩ" }, { name: "Rouie", pos: "Support", class: "Trợ thủ" }, { name: "Rourke", pos: "Caesar", class: "Đấu sĩ" }, { name: "Roxie", pos: "Support", class: "Đỡ đòn", class2: "Đấu sĩ" }, { name: "Ryoma", pos: "Caesar", class: "Đấu sĩ", class2: "Sát thủ" },
+            { name: "Sephera", pos: "Support", class: "Pháp sư", class2: "Trợ thủ" }, { name: "Sinestrea", pos: "Jungle", class: "Sát thủ" }, { name: "Skud", pos: "Caesar", class: "Đỡ đòn", class2: "Đấu sĩ" }, { name: "Slimz", pos: "AD", class: "Xạ thủ" }, { name: "Superman", pos: "Caesar", class: "Đấu sĩ" }, { name: "Stuart", pos: "AD", class: "Xạ thủ" },
+            { name: "Tachi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Taara", pos: "Support", class: "Đỡ đòn", class2: "Đấu sĩ" }, { name: "Tamyn", pos: "Jungle", class: "Đấu sĩ" }, { name: "TeeMee", pos: "Support", class: "Trợ thủ", class2: "Đỡ đòn" }, { name: "Teeri", pos: "AD", class: "Xạ thủ" }, { name: "Tel'Annas", pos: "AD", class: "Xạ thủ" }, { name: "Thane", pos: "Support", class: "Đỡ đòn" }, { name: "The Flash", pos: "AD", class: "Sát thủ" }, { name: "Thorne", pos: "AD", class: "Xạ thủ" }, { name: "Toro", pos: "Support", class: "Đỡ đòn", class2: "Trợ thủ" }, { name: "Triệu Vân", pos: "Caesar", class: "Đấu sĩ" }, { name: "Tulen", pos: "Mid", class: "Pháp sư" },
+            { name: "Valhein", pos: "AD", class: "Xạ thủ" }, { name: "Veera", pos: "Mid", class: "Pháp sư" }, { name: "Veres", pos: "Caesar", class: "Đấu sĩ" }, { name: "Violet", pos: "AD", class: "Xạ thủ" }, { name: "Volkath", pos: "Caesar", class: "Đấu sĩ", class2: "Sát thủ" },
+            { name: "Wiro", pos: "Caesar", class: "Đấu sĩ", class2: "Đỡ đòn" }, { name: "Wisp", pos: "AD", class: "Xạ thủ" }, { name: "Wonder Woman", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Xeniel", pos: "Support", class: "Đỡ đòn", class2: "Trợ thủ" },
+            { name: "Yan", pos: "Caesar", class: "Đấu sĩ", class2: "Sát thủ" }, { name: "Yena", pos: "Caesar", class: "Đấu sĩ" }, { name: "Yorn", pos: "AD", class: "Xạ thủ" }, { name: "Yue", pos: "Mid", class: "Pháp sư" }, { name: "Y'bneth", pos: "Support", class: "Đỡ đòn" },
+            { name: "Zanis", pos: "Jungle", class: "Đấu sĩ" }, { name: "Zata", pos: "Mid", class: "Pháp sư", class2: "Sát thủ" }, { name: "Zephys", pos: "Jungle", class: "Đấu sĩ", class2: "Sát thủ" }, { name: "Zill", pos: "Jungle", class: "Sát thủ" }, { name: "Zip", pos: "Support", class: "Trợ thủ" }, { name: "Zuka", pos: "Caesar", class: "Đấu sĩ", class2: "Sát thủ" }
         ];
+
+        // Tướng Liên Quân thường có 2 lớp (vd Chaugnar = Đỡ đòn + Trợ thủ). class = lớp chính (dùng để
+        // tính loại sát thương), class2 = lớp phụ (chỉ dùng để hiển thị và lọc) — ghi 1 lớp thì luôn
+        // có nửa còn lại nhìn như bị sai.
+        function classLabel(h) {
+            return h.class2 ? `${h.class} / ${h.class2}` : h.class;
+        }
+        function hasClass(h, cls) {
+            return h.class === cls || h.class2 === cls;
+        }
 
         // Hàm sinh data cho toàn bộ Hero Pool dựa trên Class
         const allHeroes = rawHeroes.map(h => {
@@ -721,7 +731,7 @@
                 spike: base ? base.spike : "—",
                 counter: base ? base.counter : "—",
                 sync: "—",
-                use: `Tướng ${h.class}, chưa có ghi chú draft/meta chi tiết.`,
+                use: `Tướng ${classLabel(h)}, chưa có ghi chú draft/meta chi tiết.`,
                 bancond: "—",
                 wincond: base ? getWcName(base.wc) : "—",
                 wc_type: base ? base.wc : "front-to-back",
@@ -824,8 +834,8 @@
             const metaOnly = document.getElementById('sim-meta-only').checked;
             const filteredHeroes = allHeroes.filter(h => {
                 const meta = draftData.find(d => d.hero === h.name);
-                return (h.name.toLowerCase().includes(search) || h.class.toLowerCase().includes(search)) &&
-                    (!fPos || h.pos === fPos) && (!fClass || h.class === fClass) &&
+                return (h.name.toLowerCase().includes(search) || classLabel(h).toLowerCase().includes(search)) &&
+                    (!fPos || h.pos === fPos) && (!fClass || hasClass(h, fClass)) &&
                     (!metaOnly || !!meta);
             });
             document.getElementById('sim-pool-count').innerText = filteredHeroes.length;
@@ -842,7 +852,7 @@
                     <div class="flex items-center justify-center gap-1">
                         <span class="font-bold text-white truncate">${h.name}</span>${tierBadge}
                     </div>
-                    <div class="text-slate-500 text-[10px]">${h.pos} - ${h.class}</div>
+                    <div class="text-slate-500 text-[10px]">${h.pos} - ${classLabel(h)}</div>
                     ${isSeriesLocked && !isGameBanned ? '<div class="text-rose-400 text-[9px] font-bold mt-0.5">SERIES</div>' : ''}
                 </button>`;
             }).join('');
