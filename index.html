@@ -315,7 +315,36 @@
         <!-- TAB 4: META SNAPSHOT -->
         <section id="meta-tab" class="tab-content hidden">
             <h2 class="text-2xl font-bold text-amber-400 mb-6 heading">Meta Snapshot</h2>
-            <p class="text-xs text-slate-400 mb-4">Toàn bộ <span id="meta-count">0</span> tướng trong Meta Pool, cùng đầu mục với Draft Board, sắp xếp theo Meta WR giảm dần.</p>
+            <p class="text-xs text-slate-400 mb-4">Hiển thị <span id="meta-count">0</span> / <span id="meta-total">0</span> tướng, sắp xếp theo Meta WR giảm dần. Tướng chưa có dữ liệu giải đấu sẽ hiện <span class="missing-data">—</span>.</p>
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <input type="text" id="meta-search" placeholder="Tìm tướng..." class="w-full md:w-1/4 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-amber-500">
+                <select id="meta-filter-pos" class="w-full md:w-1/4 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="">Tất cả vị trí</option>
+                    <option value="Caesar">Caesar</option>
+                    <option value="Jungle">Jungle</option>
+                    <option value="Mid">Mid</option>
+                    <option value="AD">AD</option>
+                    <option value="Support">Support</option>
+                </select>
+                <select id="meta-filter-tier" class="w-full md:w-1/4 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="">Tất cả Tier</option>
+                    <option value="S+">S+</option>
+                    <option value="S">S</option>
+                    <option value="A+">A+</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                </select>
+                <select id="meta-filter-min-tier" class="w-full md:w-1/4 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="">Từ hạng: Tất cả</option>
+                    <option value="S+">Chỉ S+</option>
+                    <option value="S">S trở lên</option>
+                    <option value="A+">A+ trở lên</option>
+                    <option value="A">A trở lên</option>
+                    <option value="B">B trở lên</option>
+                    <option value="C">C trở lên</option>
+                </select>
+            </div>
             <div class="overflow-x-auto bg-slate-800/50 rounded-lg shadow-xl border border-slate-700">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-slate-900 text-amber-500 heading text-xs uppercase">
@@ -355,8 +384,12 @@
                 </div>
                 <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700 card-glow">
                     <h2 class="text-xl font-bold text-amber-400 mb-4 heading">Sources</h2>
-                     <a href="https://liquipedia.net/honorofkings/Arena_of_Valor_Premier_League/2026/Statistics" target="_blank" class="block p-3 bg-slate-900 rounded hover:bg-slate-700 transition">
+                     <a href="https://liquipedia.net/honorofkings/Arena_of_Valor_Premier_League/2026/Statistics" target="_blank" class="block p-3 bg-slate-900 rounded hover:bg-slate-700 transition mb-2">
                         <span class="font-bold text-sky-400">APL 2026 Main Event</span>
+                    </a>
+                    <a href="https://lienquan.garena.vn/hoc-vien/tuong-skin/" target="_blank" class="block p-3 bg-slate-900 rounded hover:bg-slate-700 transition">
+                        <span class="font-bold text-sky-400">Danh sách tướng chính thức (Garena)</span>
+                        <span class="block text-xs text-slate-400 mt-1">Dùng để đối chiếu Hero Pool đầy đủ 129 tướng</span>
                     </a>
                 </div>
             </div>
@@ -411,28 +444,30 @@
         ];
 
         // DATA: TOÀN BỘ HERO POOL LIÊN QUÂN (Đã auto xây dựng Counter, Spike, Flex, WC)
+        // 129 tướng — đối chiếu với danh sách chính thức tại lienquan.garena.vn/hoc-vien/tuong-skin/ (crawl 18/08/2026)
         const rawHeroes = [
-            { name: "Aleister", pos: "Support", class: "Pháp sư" }, { name: "Alice", pos: "Support", class: "Trợ thủ" }, { name: "Amily", pos: "Caesar", class: "Đấu sĩ" }, { name: "Annette", pos: "Support", class: "Trợ thủ" }, { name: "Aoi", pos: "Jungle", class: "Sát thủ" }, { name: "Arduin", pos: "Caesar", class: "Đỡ đòn" }, { name: "Arum", pos: "Caesar", class: "Đỡ đòn" }, { name: "Astrid", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ata", pos: "Caesar", class: "Đỡ đòn" }, { name: "Aya", pos: "Support", class: "Trợ thủ" }, { name: "Azzen'Ka", pos: "Mid", class: "Pháp sư" },
-            { name: "Baldum", pos: "Support", class: "Đỡ đòn" }, { name: "Billow", pos: "Jungle", class: "Sát thủ" }, { name: "Butterfly", pos: "Jungle", class: "Sát thủ" }, { name: "Capheny", pos: "AD", class: "Xạ thủ" }, { name: "Celica", pos: "AD", class: "Xạ thủ" }, { name: "Chaugnar", pos: "Support", class: "Trợ thủ" }, { name: "Điêu Thuyền", pos: "Mid", class: "Pháp sư" }, { name: "Dirak", pos: "Mid", class: "Pháp sư" }, { name: "Dolia", pos: "Support", class: "Trợ thủ" }, { name: "Dextra", pos: "AD", class: "Xạ thủ" },
-            { name: "Eland'orr", pos: "Jungle", class: "Sát thủ" }, { name: "Elsu", pos: "AD", class: "Xạ thủ" }, { name: "Enzo", pos: "Caesar", class: "Đấu sĩ" }, { name: "Arthur", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Airi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Aleister", pos: "Support", class: "Pháp sư" }, { name: "Alice", pos: "Support", class: "Trợ thủ" }, { name: "Allain", pos: "Caesar", class: "Đấu sĩ" }, { name: "Amily", pos: "Caesar", class: "Đấu sĩ" }, { name: "Annette", pos: "Support", class: "Trợ thủ" }, { name: "Aoi", pos: "Jungle", class: "Sát thủ" }, { name: "Arduin", pos: "Caesar", class: "Đỡ đòn" }, { name: "Arum", pos: "Caesar", class: "Đỡ đòn" }, { name: "Astrid", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ata", pos: "Caesar", class: "Đỡ đòn" }, { name: "Aya", pos: "Support", class: "Trợ thủ" }, { name: "Azzen'Ka", pos: "Mid", class: "Pháp sư" },
+            { name: "Baldum", pos: "Support", class: "Đỡ đòn" }, { name: "Bijan", pos: "Caesar", class: "Đấu sĩ" }, { name: "Billow", pos: "Jungle", class: "Sát thủ" }, { name: "Biron", pos: "Caesar", class: "Đấu sĩ" }, { name: "Bolt Baron", pos: "Caesar", class: "Đấu sĩ" }, { name: "Bonnie", pos: "Mid", class: "Pháp sư" }, { name: "Bright", pos: "Jungle", class: "Sát thủ" }, { name: "Butterfly", pos: "Jungle", class: "Sát thủ" }, { name: "Capheny", pos: "AD", class: "Xạ thủ" }, { name: "Celica", pos: "AD", class: "Xạ thủ" }, { name: "Chaugnar", pos: "Support", class: "Trợ thủ" }, { name: "Charlotte", pos: "Caesar", class: "Đấu sĩ" }, { name: "Cresht", pos: "Support", class: "Trợ thủ" }, { name: "Điêu Thuyền", pos: "Mid", class: "Pháp sư" }, { name: "D'Arcy", pos: "Mid", class: "Pháp sư" }, { name: "Dirak", pos: "Mid", class: "Pháp sư" }, { name: "Dolia", pos: "Support", class: "Trợ thủ" }, { name: "Dyadia", pos: "Support", class: "Trợ thủ" }, { name: "Dextra", pos: "AD", class: "Xạ thủ" },
+            { name: "Eland'orr", pos: "Jungle", class: "Sát thủ" }, { name: "Edras", pos: "Caesar", class: "Đấu sĩ" }, { name: "Elsu", pos: "AD", class: "Xạ thủ" }, { name: "Enzo", pos: "Caesar", class: "Đấu sĩ" }, { name: "Errol", pos: "Caesar", class: "Đấu sĩ" }, { name: "Erin", pos: "AD", class: "Xạ thủ" }, { name: "Arthur", pos: "Caesar", class: "Đấu sĩ" },
             { name: "Fennik", pos: "AD", class: "Xạ thủ" }, { name: "Florentino", pos: "Caesar", class: "Đấu sĩ" }, { name: "Flowborn", pos: "AD", class: "Xạ thủ" },
-            { name: "Gildur", pos: "Mid", class: "Pháp sư" }, { name: "Grakk", pos: "Support", class: "Đỡ đòn" },
-            { name: "Hayate", pos: "AD", class: "Xạ thủ" },
-            { name: "Ignis", pos: "Mid", class: "Pháp sư" }, { name: "Ishar", pos: "Support", class: "Trợ thủ" },
-            { name: "Kaine", pos: "AD", class: "Xạ thủ" }, { name: "Keera", pos: "Jungle", class: "Sát thủ" }, { name: "Kil'Groth", pos: "Caesar", class: "Đấu sĩ" }, { name: "Kriknak", pos: "Jungle", class: "Sát thủ" }, { name: "Krizzix", pos: "Support", class: "Trợ thủ" },
-            { name: "Lauriel", pos: "Mid", class: "Pháp sư" }, { name: "Liliana", pos: "Mid", class: "Pháp sư" }, { name: "Lindis", pos: "AD", class: "Xạ thủ" }, { name: "Lorion", pos: "Mid", class: "Pháp sư" }, { name: "Lumburr", pos: "Support", class: "Đỡ đòn" }, { name: "Lữ Bố", pos: "Caesar", class: "Đấu sĩ" },
-            { name: "Maloch", pos: "Caesar", class: "Đỡ đòn" }, { name: "Marja", pos: "Mid", class: "Pháp sư" }, { name: "Max", pos: "Caesar", class: "Đấu sĩ" }, { name: "Mganga", pos: "Mid", class: "Pháp sư" }, { name: "Mina", pos: "Support", class: "Đỡ đòn" }, { name: "Moren", pos: "AD", class: "Xạ thủ" }, { name: "Murad", pos: "Jungle", class: "Sát thủ" },
-            { name: "Nakroth", pos: "Jungle", class: "Sát thủ" }, { name: "Natalya", pos: "Mid", class: "Pháp sư" },
+            { name: "Gildur", pos: "Mid", class: "Pháp sư" }, { name: "Goverra", pos: "Mid", class: "Pháp sư" }, { name: "Grakk", pos: "Support", class: "Đỡ đòn" },
+            { name: "Hayate", pos: "AD", class: "Xạ thủ" }, { name: "Heino", pos: "Mid", class: "Pháp sư" },
+            { name: "Iggy", pos: "Mid", class: "Pháp sư" }, { name: "Ignis", pos: "Mid", class: "Pháp sư" }, { name: "Ilumia", pos: "Mid", class: "Pháp sư" }, { name: "Ishar", pos: "Support", class: "Trợ thủ" },
+            { name: "Jinna", pos: "Mid", class: "Pháp sư" },
+            { name: "Kahlii", pos: "Mid", class: "Pháp sư" }, { name: "Kaine", pos: "AD", class: "Xạ thủ" }, { name: "Keera", pos: "Jungle", class: "Sát thủ" }, { name: "Kil'Groth", pos: "Caesar", class: "Đấu sĩ" }, { name: "Kriknak", pos: "Jungle", class: "Sát thủ" }, { name: "Krixi", pos: "Mid", class: "Pháp sư" }, { name: "Krizzix", pos: "Support", class: "Trợ thủ" },
+            { name: "Laville", pos: "AD", class: "Xạ thủ" }, { name: "Lauriel", pos: "Mid", class: "Pháp sư" }, { name: "Liliana", pos: "Mid", class: "Pháp sư" }, { name: "Lindis", pos: "AD", class: "Xạ thủ" }, { name: "Lorion", pos: "Mid", class: "Pháp sư" }, { name: "Lumburr", pos: "Support", class: "Đỡ đòn" }, { name: "Lữ Bố", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Maloch", pos: "Caesar", class: "Đỡ đòn" }, { name: "Marja", pos: "Mid", class: "Pháp sư" }, { name: "Max", pos: "Caesar", class: "Đấu sĩ" }, { name: "Mganga", pos: "Mid", class: "Pháp sư" }, { name: "Ming", pos: "Support", class: "Trợ thủ" }, { name: "Mina", pos: "Support", class: "Đỡ đòn" }, { name: "Moren", pos: "AD", class: "Xạ thủ" }, { name: "Murad", pos: "Jungle", class: "Sát thủ" },
+            { name: "Nakroth", pos: "Jungle", class: "Sát thủ" }, { name: "Natalya", pos: "Mid", class: "Pháp sư" }, { name: "Ngộ Không", pos: "Jungle", class: "Sát thủ" },
             { name: "Omen", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ormarr", pos: "Caesar", class: "Đỡ đòn" }, { name: "Omega", pos: "Support", class: "Đỡ đòn" },
             { name: "Paine", pos: "Jungle", class: "Sát thủ" }, { name: "Helen", pos: "Support", class: "Trợ thủ" }, { name: "Preyta", pos: "Mid", class: "Pháp sư" },
             { name: "Qi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Quillen", pos: "Jungle", class: "Sát thủ" },
-            { name: "Raz", pos: "Mid", class: "Đấu sĩ" }, { name: "Richter", pos: "Caesar", class: "Đấu sĩ" }, { name: "Rouie", pos: "Support", class: "Trợ thủ" }, { name: "Rourke", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ryoma", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Raz", pos: "Mid", class: "Đấu sĩ" }, { name: "Richter", pos: "Caesar", class: "Đấu sĩ" }, { name: "Rouie", pos: "Support", class: "Trợ thủ" }, { name: "Rourke", pos: "Caesar", class: "Đấu sĩ" }, { name: "Roxie", pos: "Support", class: "Đỡ đòn" }, { name: "Ryoma", pos: "Caesar", class: "Đấu sĩ" },
             { name: "Sephera", pos: "Support", class: "Pháp sư" }, { name: "Sinestrea", pos: "Jungle", class: "Sát thủ" }, { name: "Skud", pos: "Caesar", class: "Đỡ đòn" }, { name: "Slimz", pos: "AD", class: "Xạ thủ" }, { name: "Superman", pos: "Caesar", class: "Đấu sĩ" }, { name: "Stuart", pos: "AD", class: "Xạ thủ" },
-            { name: "TeeMee", pos: "Support", class: "Trợ thủ" }, { name: "Tel'Annas", pos: "AD", class: "Xạ thủ" }, { name: "Thane", pos: "Support", class: "Đỡ đòn" }, { name: "The Flash", pos: "AD", class: "Xạ thủ" }, { name: "Toro", pos: "Support", class: "Đỡ đòn" }, { name: "Triệu Vân", pos: "Caesar", class: "Đấu sĩ" },
-            { name: "Valhein", pos: "AD", class: "Xạ thủ" }, { name: "Veres", pos: "Caesar", class: "Đấu sĩ" }, { name: "Violet", pos: "AD", class: "Xạ thủ" }, { name: "Volkath", pos: "Caesar", class: "Đấu sĩ" },
-            { name: "Wiro", pos: "Caesar", class: "Đấu sĩ" }, { name: "Wonder Woman", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Tachi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Taara", pos: "Support", class: "Đỡ đòn" }, { name: "Tamyn", pos: "Jungle", class: "Đấu sĩ" }, { name: "TeeMee", pos: "Support", class: "Trợ thủ" }, { name: "Teeri", pos: "AD", class: "Xạ thủ" }, { name: "Tel'Annas", pos: "AD", class: "Xạ thủ" }, { name: "Thane", pos: "Support", class: "Đỡ đòn" }, { name: "The Flash", pos: "AD", class: "Xạ thủ" }, { name: "Thorne", pos: "AD", class: "Xạ thủ" }, { name: "Toro", pos: "Support", class: "Đỡ đòn" }, { name: "Triệu Vân", pos: "Caesar", class: "Đấu sĩ" }, { name: "Tulen", pos: "Mid", class: "Pháp sư" },
+            { name: "Valhein", pos: "AD", class: "Xạ thủ" }, { name: "Veera", pos: "Mid", class: "Pháp sư" }, { name: "Veres", pos: "Caesar", class: "Đấu sĩ" }, { name: "Violet", pos: "AD", class: "Xạ thủ" }, { name: "Volkath", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Wiro", pos: "Caesar", class: "Đấu sĩ" }, { name: "Wisp", pos: "AD", class: "Xạ thủ" }, { name: "Wonder Woman", pos: "Caesar", class: "Đấu sĩ" },
             { name: "Xeniel", pos: "Support", class: "Đỡ đòn" },
-            { name: "Yena", pos: "Caesar", class: "Đấu sĩ" }, { name: "Yorn", pos: "AD", class: "Xạ thủ" }, { name: "Yue", pos: "Mid", class: "Pháp sư" }, { name: "Y'bneth", pos: "Support", class: "Đỡ đòn" },
+            { name: "Yan", pos: "Caesar", class: "Đấu sĩ" }, { name: "Yena", pos: "Caesar", class: "Đấu sĩ" }, { name: "Yorn", pos: "AD", class: "Xạ thủ" }, { name: "Yue", pos: "Mid", class: "Pháp sư" }, { name: "Y'bneth", pos: "Support", class: "Đỡ đòn" },
             { name: "Zanis", pos: "Jungle", class: "Đấu sĩ" }, { name: "Zata", pos: "Mid", class: "Pháp sư" }, { name: "Zephys", pos: "Jungle", class: "Đấu sĩ" }, { name: "Zill", pos: "Jungle", class: "Sát thủ" }, { name: "Zip", pos: "Support", class: "Đỡ đòn" }, { name: "Zuka", pos: "Caesar", class: "Đấu sĩ" }
         ];
 
@@ -537,10 +572,42 @@
             const n = parseFloat(String(wrStr).replace('%', ''));
             return isNaN(n) ? -1 : n;
         }
+
+        // Toàn bộ Hero Pool ghép với dữ liệu Meta (draftData) khi có, còn lại dùng dữ liệu suy luận theo class
+        const fullMetaData = rawHeroes.map(h => {
+            const meta = draftData.find(d => d.hero === h.name);
+            if (meta) return meta;
+            const base = allHeroes.find(a => a.name === h.name);
+            return {
+                pos: h.pos, hero: h.name, tier: "—", ban: "—", pick: "—", fp: "—",
+                flex: base ? base.flex : "—",
+                spike: base ? base.spike : "—",
+                counter: base ? base.counter : "—",
+                sync: "—",
+                use: `Tướng ${h.class}, chưa có ghi chú draft/meta chi tiết.`,
+                bancond: "—",
+                wincond: base ? getWcName(base.wc) : "—",
+                wc_type: base ? base.wc : "front-to-back",
+                wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu"
+            };
+        });
+
         function renderMeta() {
             const tbody = document.getElementById('meta-body');
-            document.getElementById('meta-count').innerText = draftData.length;
-            const sorted = [...draftData].sort((a, b) => parseWr(b.wr) - parseWr(a.wr));
+            document.getElementById('meta-total').innerText = fullMetaData.length;
+            const search = document.getElementById('meta-search').value.toLowerCase();
+            const pos = document.getElementById('meta-filter-pos').value;
+            const tier = document.getElementById('meta-filter-tier').value;
+            const minTier = document.getElementById('meta-filter-min-tier').value;
+            const filtered = fullMetaData.filter(d =>
+                (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
+                (!pos || d.pos === pos) &&
+                (!tier || d.tier === tier) &&
+                (!minTier || (d.tier !== "—" && tierRank(d.tier) <= tierRank(minTier)))
+            );
+            document.getElementById('meta-count').innerText = filtered.length;
+            if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="14" class="text-center p-8 text-slate-500">Không tìm thấy tướng phù hợp.</td></tr>`; return; }
+            const sorted = [...filtered].sort((a, b) => parseWr(b.wr) - parseWr(a.wr));
             tbody.innerHTML = sorted.map(renderHeroRowHtml).join('');
         }
 
@@ -795,44 +862,63 @@
         }
 
         // --- WIN CONDITION MATRIX LOGIC ---
+        // 4 nhóm Win Condition chuẩn cho biểu đồ tổng hợp đội hình (gộp Dive + Split làm 1 nhóm)
+        const wcPieGroups = {
+            snowball: { label: 'Early Snowball', color: '#f43f5e' },
+            'front-to-back': { label: 'Front-to-Back', color: '#f59e0b' },
+            divesplit: { label: 'Dive / Split', color: '#10b981' },
+            late: { label: 'Late Game Scaling', color: '#0ea5e9' }
+        };
+
         function renderTeamMatrix() {
             const bluePicks = simState.blue.pick.filter(h => h);
             const redPicks = simState.red.pick.filter(h => h);
-            
+
             const calcWc = (picks) => {
-                const counts = { snowball: 0, 'front-to-back': 0, dive: 0, split: 0, late: 0 };
+                const counts = { snowball: 0, 'front-to-back': 0, divesplit: 0, late: 0 };
                 picks.forEach(p => {
                     const h = allHeroes.find(h => h.name === p);
-                    if(h && counts[h.wc] !== undefined) counts[h.wc]++;
+                    if (!h) return;
+                    const key = (h.wc === 'dive' || h.wc === 'split') ? 'divesplit' : h.wc;
+                    if (counts[key] !== undefined) counts[key]++;
                 });
                 const total = picks.length || 1;
-                return Object.keys(counts).map(k => ({ name: k, val: (counts[k] / total) * 100 }));
+                return Object.keys(counts).map(k => ({ key: k, val: (counts[k] / total) * 100 }));
             };
 
             const blueWc = calcWc(bluePicks);
             const redWc = calcWc(redPicks);
 
             const drawTeamWc = (teamName, wcData, picks) => {
-                let mismatch = picks.length === 5 && wcData.some(w => w.name === 'snowball' && w.val > 0) && wcData.some(w => w.name === 'late' && w.val > 0);
-                
+                const snowballVal = wcData.find(w => w.key === 'snowball').val;
+                const lateVal = wcData.find(w => w.key === 'late').val;
+                const mismatch = picks.length === 5 && snowballVal > 0 && lateVal > 0;
+
                 let html = `<h4 class="font-bold text-lg mb-3 ${teamName === 'Blue' ? 'text-blue-400' : 'text-rose-400'}">${teamName} Team</h4>`;
-                if(mismatch) {
+                if (mismatch) {
                     html += `<div class="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs p-2 rounded mb-3 font-bold">⚠️ Lỗi định hướng đội hình (Comp Mismatch): Có cả Snowball và Late Game!</div>`;
                 }
-                html += `<div class="space-y-2">`;
+
+                let cumulative = 0;
+                const stops = [];
                 wcData.forEach(w => {
-                    html += `
-                        <div>
-                            <div class="flex justify-between text-xs mb-1">
-                                <span class="text-slate-300">${getWcName(w.name)}</span>
-                                <span class="text-slate-400">${w.val.toFixed(0)}%</span>
-                            </div>
-                            <div class="wc-bar-bg">
-                                <div class="wc-bar-fill ${getWcColor(w.name)}" style="width: ${w.val}%"></div>
-                            </div>
-                        </div>`;
+                    if (w.val <= 0) return;
+                    const start = cumulative;
+                    cumulative += w.val;
+                    stops.push(`${wcPieGroups[w.key].color} ${start}% ${cumulative}%`);
                 });
-                html += `</div>`;
+                const gradient = stops.length > 0 ? stops.join(', ') : '#334155 0% 100%';
+
+                html += `<div class="flex items-center gap-6">
+                    <div class="rounded-full flex-shrink-0" style="width:120px;height:120px;background: conic-gradient(${gradient});"></div>
+                    <div class="space-y-2 flex-1">
+                        ${wcData.map(w => `
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="flex items-center gap-2 text-slate-300"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${wcPieGroups[w.key].color}"></span>${wcPieGroups[w.key].label}</span>
+                                <span class="text-slate-400 font-semibold">${w.val.toFixed(0)}%</span>
+                            </div>`).join('')}
+                    </div>
+                </div>`;
                 return html;
             };
 
@@ -927,6 +1013,10 @@
         document.getElementById('sim-search').addEventListener('input', renderSimPool);
         document.getElementById('sim-filter-pos').addEventListener('change', renderSimPool);
         document.getElementById('sim-filter-class').addEventListener('change', renderSimPool);
+        document.getElementById('meta-search').addEventListener('input', renderMeta);
+        document.getElementById('meta-filter-pos').addEventListener('change', renderMeta);
+        document.getElementById('meta-filter-tier').addEventListener('change', renderMeta);
+        document.getElementById('meta-filter-min-tier').addEventListener('change', renderMeta);
 
         renderDraft();
         renderMeta();
