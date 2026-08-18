@@ -149,6 +149,7 @@
                             <div id="blue-pick-5" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">P5</div>
                         </div>
                     </div>
+                    <div id="blue-advice" class="hidden mt-4 pt-4 border-t border-slate-700"></div>
                 </div>
 
                 <!-- Hero Pool & Info -->
@@ -213,11 +214,12 @@
                             <div id="red-pick-5" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">P5</div>
                         </div>
                     </div>
+                    <div id="red-advice" class="hidden mt-4 pt-4 border-t border-slate-700"></div>
                 </div>
             </div>
 
             <!-- AI Coach Advice Box -->
-            <div id="sim-advice-box" class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-amber-500/40 mb-6"></div>
+            <div id="sim-advice-box" class="hidden bg-slate-800/50 p-6 rounded-lg shadow-xl border border-amber-500/40 mb-6"></div>
 
             <!-- Win Condition Matrix & Advanced Checklist (Chỉ hiện khi Draft xong) -->
             <div id="sim-post-draft" class="hidden mb-8">
@@ -240,6 +242,18 @@
                             <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Flex Pick Value</span><br><span class="text-slate-400 text-xs">Tướng pick lượt 1-2 có khả năng đổi vị trí (Flex) để làm khó đối phương không?</span></div></div>
                             <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Target Ban Efficiency</span><br><span class="text-slate-400 text-xs">Dùng 2 ban vào 2 tướng tủ của 1 player, hay dải ban ra 5 player khác nhau?</span></div></div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Gợi ý Lối Chơi & Cách Vận Hành Đội Hình -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-blue-500/30">
+                        <h3 class="text-xl font-bold text-blue-400 mb-4 heading">Cách Vận Hành - TEAM BLUE</h3>
+                        <div id="blue-gameplan" class="text-sm text-slate-300"></div>
+                    </div>
+                    <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-rose-500/30">
+                        <h3 class="text-xl font-bold text-rose-400 mb-4 heading">Cách Vận Hành - TEAM RED</h3>
+                        <div id="red-gameplan" class="text-sm text-slate-300"></div>
                     </div>
                 </div>
             </div>
@@ -301,13 +315,25 @@
         <!-- TAB 4: META SNAPSHOT -->
         <section id="meta-tab" class="tab-content hidden">
             <h2 class="text-2xl font-bold text-amber-400 mb-6 heading">Meta Snapshot</h2>
+            <p class="text-xs text-slate-400 mb-4">Toàn bộ <span id="meta-count">0</span> tướng trong Meta Pool, cùng đầu mục với Draft Board, sắp xếp theo Meta WR giảm dần.</p>
             <div class="overflow-x-auto bg-slate-800/50 rounded-lg shadow-xl border border-slate-700">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-slate-900 text-amber-500 heading text-xs uppercase">
                         <tr>
-                            <th class="p-3">Vị trí</th><th class="p-3">Tướng</th><th class="p-3">Tier</th><th class="p-3">Meta WR</th>
-                            <th class="p-3">Pick Rate</th><th class="p-3">Ban Rate</th><th class="p-3">Presence</th>
-                            <th class="p-3">Giải/Nguồn</th><th class="p-3">Trạng thái</th>
+                            <th class="p-3">Vị trí</th>
+                            <th class="p-3">Tướng</th>
+                            <th class="p-3">Tier</th>
+                            <th class="p-3">Ban/Pick</th>
+                            <th class="p-3">First Pick</th>
+                            <th class="p-3">Flex Pick</th>
+                            <th class="p-3">Power Spike</th>
+                            <th class="p-3">Counter Pool</th>
+                            <th class="p-3">Phối hợp</th>
+                            <th class="p-3">Đk sử dụng</th>
+                            <th class="p-3">Đk Ban</th>
+                            <th class="p-3">Win Condition</th>
+                            <th class="p-3">WR / Presence</th>
+                            <th class="p-3">Nguồn</th>
                         </tr>
                     </thead>
                     <tbody id="meta-body"></tbody>
@@ -472,17 +498,8 @@
         }
 
         // Render Draft Board
-        function renderDraft() {
-            const tbody = document.getElementById('draft-body');
-            const search = document.getElementById('search-hero').value.toLowerCase();
-            const pos = document.getElementById('filter-pos').value;
-            const tier = document.getElementById('filter-tier').value;
-            const filtered = draftData.filter(d => 
-                (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
-                (!pos || d.pos === pos) && (!tier || d.tier === tier)
-            );
-            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="14" class="text-center p-8 text-slate-500">Không tìm thấy tướng phù hợp.</td></tr>`; return; }
-            tbody.innerHTML = filtered.map(d => `
+        function renderHeroRowHtml(d) {
+            return `
                 <tr class="hover:bg-slate-800 transition">
                     <td class="table-cell"><span class="px-2 py-1 rounded text-xs font-bold ${getPosColor(d.pos)}">${d.pos}</span></td>
                     <td class="table-cell font-bold text-white">${d.hero}</td>
@@ -499,7 +516,32 @@
                     <td class="table-cell text-xs"><span class="block text-white">${checkMissing(d.wr)}</span><span class="text-slate-400">(${checkMissing(d.presence)})</span></td>
                     <td class="table-cell text-xs text-slate-400">${checkMissing(d.source)}</td>
                 </tr>
-            `).join('');
+            `;
+        }
+
+        function renderDraft() {
+            const tbody = document.getElementById('draft-body');
+            const search = document.getElementById('search-hero').value.toLowerCase();
+            const pos = document.getElementById('filter-pos').value;
+            const tier = document.getElementById('filter-tier').value;
+            const filtered = draftData.filter(d =>
+                (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
+                (!pos || d.pos === pos) && (!tier || d.tier === tier)
+            );
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="14" class="text-center p-8 text-slate-500">Không tìm thấy tướng phù hợp.</td></tr>`; return; }
+            tbody.innerHTML = filtered.map(renderHeroRowHtml).join('');
+        }
+
+        // Render Meta Snapshot: toàn bộ tướng trong Meta Pool, sắp xếp theo Meta WR giảm dần
+        function parseWr(wrStr) {
+            const n = parseFloat(String(wrStr).replace('%', ''));
+            return isNaN(n) ? -1 : n;
+        }
+        function renderMeta() {
+            const tbody = document.getElementById('meta-body');
+            document.getElementById('meta-count').innerText = draftData.length;
+            const sorted = [...draftData].sort((a, b) => parseWr(b.wr) - parseWr(a.wr));
+            tbody.innerHTML = sorted.map(renderHeroRowHtml).join('');
         }
 
         // --- DRAFT SIMULATOR LOGIC ---
@@ -574,6 +616,7 @@
                 document.getElementById('sim-finish-panel').classList.remove('hidden');
                 document.getElementById('sim-post-draft').classList.remove('hidden');
                 renderTeamMatrix();
+                renderGameplan();
             } else {
                 const nextStep = draftSteps[simStep];
                 document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${nextStep.label}`;
@@ -648,11 +691,21 @@
 
         function renderAdvice() {
             const adviceBox = document.getElementById('sim-advice-box');
+            const blueSlot = document.getElementById('blue-advice');
+            const redSlot = document.getElementById('red-advice');
+            blueSlot.innerHTML = '';
+            blueSlot.classList.add('hidden');
+            redSlot.innerHTML = '';
+            redSlot.classList.add('hidden');
+
             if(simStep >= draftSteps.length) {
+                adviceBox.classList.remove('hidden');
                 adviceBox.innerHTML = `<div class="text-amber-400 font-bold text-lg mb-2 heading">Đội hình hoàn tất!</div>
                 <div class="text-slate-300 text-sm">Hãy kiểm tra Win Condition Matrix và Advanced Checklist bên dưới để đảm bảo đội hình không thiếu công cụ Engage, Peel hay DPS nhé.</div>`;
                 return;
             }
+            adviceBox.classList.add('hidden');
+            adviceBox.innerHTML = '';
             const step = draftSteps[simStep];
             const opponent = step.team === 'blue' ? 'red' : 'blue';
             const myTeam = step.team;
@@ -731,9 +784,11 @@
                     }
                 }
             }
-            adviceBox.innerHTML = `${adviceTitle}
-                <div class="text-sm text-slate-400 mb-2">${context}</div>
-                <div class="bg-slate-900 p-4 rounded border-l-4 border-amber-500 text-sm text-slate-200">
+            const targetSlot = myTeam === 'blue' ? blueSlot : redSlot;
+            targetSlot.classList.remove('hidden');
+            targetSlot.innerHTML = `${adviceTitle}
+                <div class="text-xs text-slate-400 mb-2">${context}</div>
+                <div class="bg-slate-900 p-3 rounded border-l-4 border-amber-500 text-xs text-slate-200">
                     <div class="mb-2"><b class="text-amber-400">Hành động:</b> ${action}</div>
                     <div><b class="text-amber-400">Vì sao?</b> ${reason}</div>
                 </div>`;
@@ -785,6 +840,66 @@
             document.getElementById('wc-red-team').innerHTML = drawTeamWc('Red', redWc, redPicks);
         }
 
+        // --- GAMEPLAN / CÁCH VẬN HÀNH LOGIC ---
+        const wcStrategy = {
+            snowball: "Chơi chủ động ngay từ đầu game: xâm lăng rừng đối phương, gom quân ăn mục tiêu nhỏ (Bảo Vệ Rồng, Tà Thần) để lùn đường và tạo chênh lệch cấp độ/trang bị. Mục tiêu là kết thúc trận trước phút 15 — tránh kéo dài giao tranh khi chưa có lợi thế rõ ràng.",
+            dive: "Ưu tiên tìm góc bắt lẻ vào tuyến sau đối phương thay vì giao tranh tổng dàn trải. Người mở giao tranh (Engage) cần combo chuẩn xác nhắm thẳng vào carry của đối phương, các thành viên còn lại theo sát để kết liễu nhanh trước khi bị phản đòn.",
+            split: "Chia nhỏ áp lực trên nhiều đường, tránh giao tranh 5v5 kéo dài không cần thiết. Dùng tướng cơ động tạo áp lực đẩy lẻ trong khi các thành viên còn lại giữ thế trận và trao đổi mục tiêu ở đường khác.",
+            "front-to-back": "Giao tranh tổng theo lớp: tuyến trước (Đỡ đòn/Đấu sĩ) mở/hứng chịu sát thương trước, carry (Xạ thủ/Pháp sư) đứng sau nhả sát thương liên tục, Trợ thủ tập trung bảo kê carry khỏi bị nhảy vào.",
+            late: "Ưu tiên farm an toàn, tránh giao tranh không cần thiết trước khi có đủ trang bị (thường mốc 3-4 món). Chơi phòng thủ tháp, câu giờ đến late game rồi dồn toàn lực vào 1 pha giao tranh quyết định."
+        };
+        const phaseLabel = { early: "Early Game (0-10')", mid: "Mid Game (10-20')", late: "Late Game (20'+)" };
+
+        function buildGameplanHtml(picks) {
+            if (picks.length === 0) return `<p class="text-slate-500 italic">Chưa có tướng nào được pick.</p>`;
+
+            // Ghép dữ liệu meta chi tiết (draftData) khi có, hoặc dữ liệu suy luận theo class (allHeroes) khi tướng ngoài pool Meta
+            const heroInfos = picks.map(p => {
+                const meta = draftData.find(d => d.hero === p);
+                const base = allHeroes.find(h => h.name === p);
+                if (meta) return { hero: p, pos: meta.pos, wc_type: meta.wc_type, spike: meta.spike, use: meta.use, wincond: meta.wincond };
+                if (base) return { hero: p, pos: base.pos, wc_type: base.wc, spike: base.spike, use: `Tướng ${base.class}, chưa có ghi chú vận hành chi tiết trong Meta Pool.`, wincond: getWcName(base.wc) };
+                return null;
+            }).filter(Boolean);
+            if (heroInfos.length === 0) return `<p class="text-slate-500 italic">Chưa có dữ liệu chiến thuật cho đội hình này.</p>`;
+
+            const wcCounts = {};
+            heroInfos.forEach(h => { wcCounts[h.wc_type] = (wcCounts[h.wc_type] || 0) + 1; });
+            const dominantWc = Object.keys(wcCounts).sort((a, b) => wcCounts[b] - wcCounts[a])[0];
+
+            const phaseCounts = { early: 0, mid: 0, late: 0 };
+            heroInfos.forEach(h => {
+                const s = (h.spike || '').toLowerCase();
+                if (s.includes('early')) phaseCounts.early++;
+                if (s.includes('mid')) phaseCounts.mid++;
+                if (s.includes('late')) phaseCounts.late++;
+            });
+            const dominantPhase = Object.keys(phaseCounts).sort((a, b) => phaseCounts[b] - phaseCounts[a])[0];
+
+            let html = `<p class="mb-3"><b class="text-amber-400">Hướng thắng chính:</b> ${getWcName(dominantWc)}</p>
+                <p class="mb-4 text-slate-400">${wcStrategy[dominantWc] || ''}</p>
+                <p class="mb-4"><b class="text-amber-400">Đỉnh sức mạnh tập trung ở:</b> ${phaseLabel[dominantPhase]} — chủ động tạo giao tranh/mục tiêu trong khung giờ này thay vì chờ đợi.</p>`;
+
+            if (wcCounts['snowball'] > 0 && wcCounts['late'] > 0) {
+                html += `<p class="mb-4 text-rose-400 font-bold">⚠️ Đội hình có cả hướng Snowball và Late Game — cần thống nhất rõ ngay từ đầu trận: nếu early game không bùng nổ được thì chuyển hẳn sang chơi an toàn chờ late, tránh nửa vời.</p>`;
+            }
+
+            html += `<div class="border-t border-slate-700 pt-3 mt-3">
+                <b class="text-amber-400">Vai trò từng tướng:</b>
+                <ul class="mt-2 space-y-1.5">
+                    ${heroInfos.map(h => `<li><b class="text-white">${h.hero}</b> <span class="text-slate-500">(${h.pos})</span> — ${h.use} <span class="text-slate-500">Win con: ${h.wincond}.</span></li>`).join('')}
+                </ul>
+            </div>`;
+            return html;
+        }
+
+        function renderGameplan() {
+            const bluePicks = simState.blue.pick.filter(h => h);
+            const redPicks = simState.red.pick.filter(h => h);
+            document.getElementById('blue-gameplan').innerHTML = buildGameplanHtml(bluePicks);
+            document.getElementById('red-gameplan').innerHTML = buildGameplanHtml(redPicks);
+        }
+
         function resetSimulator() {
             simStep = 0;
             simState.blue = { ban: [null, null, null, null], pick: [null, null, null, null, null] };
@@ -814,6 +929,7 @@
         document.getElementById('sim-filter-class').addEventListener('change', renderSimPool);
 
         renderDraft();
+        renderMeta();
         renderSimPool();
         updateSimUI();
         renderAdvice();
