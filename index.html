@@ -220,6 +220,10 @@
                                 <option value="Đỡ đòn">Đỡ đòn</option>
                             </select>
                         </div>
+                        <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="sim-meta-only" class="accent-amber-500 w-4 h-4">
+                            <span>Chỉ hiện tướng trong Meta Pool (<span id="sim-pool-count">0</span> tướng)</span>
+                        </label>
                     </div>
 
                     <div id="sim-hero-pool" class="grid grid-cols-4 md:grid-cols-5 gap-2 max-h-[300px] overflow-y-auto pr-2"></div>
@@ -287,7 +291,15 @@
                             <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Flex Pick Value</span><br><span class="text-slate-400 text-xs">Tướng pick lượt 1-2 có khả năng đổi vị trí (Flex) để làm khó đối phương không?</span></div></div>
                             <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Target Ban Efficiency</span><br><span class="text-slate-400 text-xs">Dùng 2 ban vào 2 tướng tủ của 1 player, hay dải ban ra 5 player khác nhau?</span></div></div>
                         </div>
+                        <div id="auto-analysis" class="mt-5 pt-4 border-t border-slate-700"></div>
                     </div>
+                </div>
+
+                <!-- So sánh loại sát thương 2 đội -->
+                <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700 mt-6">
+                    <h3 class="text-xl font-bold text-amber-400 mb-1 heading">Cân bằng Loại Sát Thương</h3>
+                    <p class="text-xs text-slate-400 mb-4">Đội thiên hẳn 1 loại sát thương sẽ bị hóa giải chỉ bằng 1 món kháng tương ứng.</p>
+                    <div id="damage-comparison"></div>
                 </div>
 
                 <!-- Power Spike Timeline -->
@@ -332,6 +344,18 @@
                     </div>
                     <div id="sim-finish-panel" class="hidden text-emerald-400 font-bold text-xl text-center">🎉 DRAFT HOÀN TẤT! Chúc may mắn.</div>
                 </div>
+                <div class="flex flex-wrap items-center justify-center gap-3 mt-3 pt-3 border-t border-slate-700">
+                    <button onclick="undoSimAction()" id="sim-undo-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded text-xs font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed" disabled>↩ Hoàn tác</button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleTimer()" id="sim-timer-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded text-xs font-semibold transition">⏱ Bật đồng hồ</button>
+                        <span id="sim-timer-display" class="hidden font-bold text-lg heading tabular-nums text-center" style="min-width:2.5rem">40</span>
+                        <select id="sim-timer-length" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-300">
+                            <option value="30">30s</option>
+                            <option value="40" selected>40s</option>
+                            <option value="50">50s</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -349,17 +373,12 @@
                     </div>
                 </div>
                 <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700 check-list">
-                    <h3 class="text-xl font-bold text-amber-400 mb-4 heading">2. Basic Team Comp Check</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-300">
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Early Game</span></div>
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Mid Game</span></div>
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Late Game</span></div>
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Frontline</span></div>
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Engage</span></div>
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Peel</span></div>
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Wave Clear</span></div>
-                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Objective Control</span></div>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="text-xl font-bold text-amber-400 heading">2. Basic Team Comp Check</h3>
+                        <button onclick="renderCompCheck()" class="text-xs text-slate-400 hover:text-amber-400">↻ Cập nhật</button>
                     </div>
+                    <p class="text-xs text-slate-400 mb-4">Tự động chấm theo đội hình đang có trong Draft Simulator. Riêng Objective Control phải tự đánh giá.</p>
+                    <div id="coach-comp-check"></div>
                 </div>
             </div>
         </section>
@@ -782,6 +801,7 @@
         // --- DRAFT SIMULATOR LOGIC ---
         let simSelectedHero = null;
         let simStep = 0;
+        let simHistory = []; // lịch sử thao tác để hỗ trợ Hoàn tác
         const simState = { blue: { ban: [null, null, null, null], pick: [null, null, null, null, null] }, red: { ban: [null, null, null, null], pick: [null, null, null, null, null] } };
         const draftSteps = [
             { team: 'blue', type: 'ban', index: 0, label: 'Blue Ban 1' }, { team: 'red', type: 'ban', index: 0, label: 'Red Ban 1' },
@@ -800,11 +820,14 @@
             const search = document.getElementById('sim-search').value.toLowerCase();
             const fPos = document.getElementById('sim-filter-pos').value;
             const fClass = document.getElementById('sim-filter-class').value;
-            const usedHeroes = [...simState.blue.ban, ...simState.blue.pick, ...simState.red.ban, ...simState.red.pick];
-            const filteredHeroes = allHeroes.filter(h => 
-                (h.name.toLowerCase().includes(search) || h.class.toLowerCase().includes(search)) &&
-                (!fPos || h.pos === fPos) && (!fClass || h.class === fClass)
-            );
+            const metaOnly = document.getElementById('sim-meta-only').checked;
+            const filteredHeroes = allHeroes.filter(h => {
+                const meta = draftData.find(d => d.hero === h.name);
+                return (h.name.toLowerCase().includes(search) || h.class.toLowerCase().includes(search)) &&
+                    (!fPos || h.pos === fPos) && (!fClass || h.class === fClass) &&
+                    (!metaOnly || !!meta);
+            });
+            document.getElementById('sim-pool-count').innerText = filteredHeroes.length;
             if(filteredHeroes.length === 0) { poolDiv.innerHTML = `<div class="col-span-5 text-center text-slate-500 text-xs py-4">Không tìm thấy tướng.</div>`; return; }
             poolDiv.innerHTML = filteredHeroes.map(h => {
                 const isGameBanned = simState.blue.ban.includes(h.name) || simState.red.ban.includes(h.name);
@@ -812,8 +835,12 @@
                 const isBanned = isGameBanned || isSeriesLocked;
                 const isPicked = simState.blue.pick.includes(h.name) || simState.red.pick.includes(h.name);
                 const statusClass = isBanned ? 'banned' : (isPicked ? 'selected' : '');
+                const meta = draftData.find(d => d.hero === h.name);
+                const tierBadge = meta ? `<span class="${getTierClass(meta.tier)} text-[10px] font-bold">${meta.tier}</span>` : '';
                 return `<button onclick="selectSimHero('${jsEscape(h.name)}')" class="sim-hero-btn p-2 rounded text-center text-xs ${statusClass}">
-                    <div class="font-bold text-white truncate">${h.name}</div>
+                    <div class="flex items-center justify-center gap-1">
+                        <span class="font-bold text-white truncate">${h.name}</span>${tierBadge}
+                    </div>
                     <div class="text-slate-500 text-[10px]">${h.pos} - ${h.class}</div>
                     ${isSeriesLocked && !isGameBanned ? '<div class="text-rose-400 text-[9px] font-bold mt-0.5">SERIES</div>' : ''}
                 </button>`;
@@ -841,13 +868,16 @@
             if(!simSelectedHero) return;
             const step = draftSteps[simStep];
             simState[step.team][step.type][step.index] = simSelectedHero;
-            if(step.type === 'pick') { updateCounterInfo(simSelectedHero, step.team); }
+            simHistory.push({ stepIndex: simStep, team: step.team, type: step.type, index: step.index, hero: simSelectedHero });
+            if(step.type === 'pick') { updateCounterInfo(simSelectedHero, step.team, simStep); }
             updateSimUI();
             simStep++;
             cancelSimSelect();
             renderSimPool();
             renderAdvice();
-            
+            refreshPostDraftPanels();
+            saveDraftState();
+
             if(simStep >= draftSteps.length) {
                 document.getElementById('sim-action-panel').classList.add('hidden');
                 document.getElementById('sim-action-panel').classList.remove('flex');
@@ -856,10 +886,103 @@
                 renderTeamMatrix();
                 renderSpikeTimeline();
                 renderGameplan();
+                renderAutoAnalysis();
+                renderDamageComparison();
+                stopTimer();
             } else {
                 const nextStep = draftSteps[simStep];
                 document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${nextStep.label}`;
+                restartTimerIfRunning();
             }
+        }
+
+        // --- HOÀN TÁC ---
+        function undoSimAction() {
+            if (simHistory.length === 0) return;
+            const last = simHistory.pop();
+            simState[last.team][last.type][last.index] = null;
+            simStep = last.stepIndex;
+
+            document.getElementById('sim-finish-panel').classList.add('hidden');
+            document.getElementById('sim-post-draft').classList.add('hidden');
+            document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${draftSteps[simStep].label}`;
+
+            cancelSimSelect();
+            updateSimUI();
+            renderSimPool();
+            renderAdvice();
+            refreshCounterPanel();
+            refreshPostDraftPanels();
+            saveDraftState();
+            restartTimerIfRunning();
+        }
+
+        // Dựng lại panel Counter/Phối hợp theo lượt pick gần nhất còn lại sau khi hoàn tác
+        function refreshCounterPanel() {
+            const lastPick = [...simHistory].reverse().find(h => h.type === 'pick');
+            if (lastPick) {
+                updateCounterInfo(lastPick.hero, lastPick.team, lastPick.stepIndex);
+            } else {
+                document.getElementById('sim-counter-title').innerText = 'Gợi ý Đối Phương (Counter)';
+                document.getElementById('sim-counter-info').innerHTML = `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`;
+            }
+        }
+
+        function refreshPostDraftPanels() {
+            document.getElementById('sim-undo-btn').disabled = simHistory.length === 0;
+            renderCompCheck();
+        }
+
+        // --- LƯU/KHÔI PHỤC DRAFT ĐANG DỞ ---
+        function saveDraftState() {
+            try { localStorage.setItem('lqDraftState', JSON.stringify({ simState, simStep, simHistory })); } catch (e) {}
+        }
+        function loadDraftState() {
+            try {
+                const raw = localStorage.getItem('lqDraftState');
+                if (!raw) return false;
+                const s = JSON.parse(raw);
+                if (!s || typeof s.simStep !== 'number' || !s.simState) return false;
+                simState.blue = s.simState.blue;
+                simState.red = s.simState.red;
+                simStep = s.simStep;
+                simHistory = s.simHistory || [];
+                return true;
+            } catch (e) { return false; }
+        }
+
+        // --- ĐỒNG HỒ ĐẾM NGƯỢC MỖI LƯỢT ---
+        let timerHandle = null, timerRemaining = 0, timerRunning = false;
+        function toggleTimer() {
+            timerRunning ? stopTimer() : startTimer();
+        }
+        function startTimer() {
+            timerRunning = true;
+            document.getElementById('sim-timer-btn').innerText = '⏹ Tắt đồng hồ';
+            document.getElementById('sim-timer-display').classList.remove('hidden');
+            restartTimerIfRunning();
+        }
+        function stopTimer() {
+            timerRunning = false;
+            clearInterval(timerHandle);
+            document.getElementById('sim-timer-btn').innerText = '⏱ Bật đồng hồ';
+            document.getElementById('sim-timer-display').classList.add('hidden');
+        }
+        function restartTimerIfRunning() {
+            if (!timerRunning) return;
+            clearInterval(timerHandle);
+            timerRemaining = parseInt(document.getElementById('sim-timer-length').value, 10);
+            paintTimer();
+            timerHandle = setInterval(() => {
+                timerRemaining--;
+                paintTimer();
+                if (timerRemaining <= 0) clearInterval(timerHandle);
+            }, 1000);
+        }
+        function paintTimer() {
+            const el = document.getElementById('sim-timer-display');
+            el.innerText = Math.max(0, timerRemaining);
+            el.className = `font-bold text-lg heading tabular-nums text-center ${timerRemaining <= 0 ? 'text-rose-500' : timerRemaining <= 10 ? 'text-amber-400' : 'text-emerald-400'}`;
         }
 
         function updateSimUI() {
@@ -890,14 +1013,14 @@
             }
         }
 
-        function updateCounterInfo(heroName, pickedByTeam) {
+        function updateCounterInfo(heroName, pickedByTeam, atStepIndex) {
             const heroData = allHeroes.find(h => h.name === heroName);
             if (!heroData) return;
             const titleEl = document.getElementById('sim-counter-title');
             const infoEl = document.getElementById('sim-counter-info');
 
-            // simStep chưa tăng ở thời điểm này -> draftSteps[simStep + 1] chính là lượt kế tiếp
-            const nextStep = draftSteps[simStep + 1];
+            // Lượt kế tiếp so với lượt vừa pick (atStepIndex), dùng được cả khi dựng lại sau Hoàn tác
+            const nextStep = draftSteps[atStepIndex + 1];
             const sameTeamPicksNext = nextStep && nextStep.type === 'pick' && nextStep.team === pickedByTeam;
 
             if (sameTeamPicksNext) {
@@ -1459,8 +1582,103 @@
             document.getElementById('red-gameplan').innerHTML = buildGameplanHtml(redPicks);
         }
 
+        // --- TỰ ĐỘNG CHẤM TEAM COMP CHECK (tab Coach Draft) ---
+        function renderCompCheck() {
+            const el = document.getElementById('coach-comp-check');
+            if (!el) return;
+            const teams = [
+                { name: 'TEAM BLUE', color: 'text-blue-400', picks: simState.blue.pick.filter(h => h) },
+                { name: 'TEAM RED', color: 'text-rose-400', picks: simState.red.pick.filter(h => h) }
+            ];
+            el.innerHTML = teams.map(t => {
+                if (t.picks.length === 0) {
+                    return `<div class="mb-4"><div class="font-bold ${t.color} mb-1">${t.name}</div><div class="text-xs text-slate-500 italic">Chưa pick tướng nào trong Draft Simulator.</div></div>`;
+                }
+                const { tools } = analyzeTeamComp(t.picks);
+                const spikes = { early: false, mid: false, late: false };
+                t.picks.forEach(p => {
+                    const meta = draftData.find(d => d.hero === p);
+                    const base = allHeroes.find(h => h.name === p);
+                    const s = ((meta ? meta.spike : (base ? base.spike : '')) || '').toLowerCase();
+                    if (s.includes('early')) spikes.early = true;
+                    if (s.includes('mid')) spikes.mid = true;
+                    if (s.includes('late')) spikes.late = true;
+                });
+                const rows = [
+                    ['Early Game', spikes.early], ['Mid Game', spikes.mid], ['Late Game', spikes.late],
+                    ['Frontline', tools.has('frontline')], ['Engage', tools.has('engage')],
+                    ['Peel', tools.has('peel')], ['Wave Clear', tools.has('waveclear')]
+                ];
+                return `<div class="mb-4">
+                    <div class="font-bold ${t.color} mb-2">${t.name} <span class="text-slate-500 font-normal text-xs">(${t.picks.length}/5 tướng)</span></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                        ${rows.map(([label, ok]) => `<div class="flex items-center gap-2">${ok ? '<span class="text-emerald-400 font-bold">✓</span>' : '<span class="text-rose-400 font-bold">✕</span>'}<span class="${ok ? 'text-slate-300' : 'text-rose-300'}">${label}</span></div>`).join('')}
+                        <div class="flex items-center gap-2"><span class="text-slate-500">○</span><span class="text-slate-500">Objective Control (tự đánh giá)</span></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // --- TỰ ĐỘNG TRẢ LỜI CÁC CÂU HỎI TRONG ADVANCED CHECKLIST ---
+        function renderAutoAnalysis() {
+            const el = document.getElementById('auto-analysis');
+            if (!el) return;
+            const teams = [
+                { name: 'Blue', color: 'text-blue-400', picks: simState.blue.pick.filter(h => h) },
+                { name: 'Red', color: 'text-rose-400', picks: simState.red.pick.filter(h => h) }
+            ];
+            el.innerHTML = `<div class="text-amber-400 font-bold text-sm mb-2 heading">Tự động phân tích</div>` + teams.map(t => {
+                const engagers = t.picks.filter(p => (heroTools[p] || []).includes('engage'));
+                const cleansers = t.picks.filter(p => (heroTools[p] || []).includes('cleanse'));
+                const { dmg } = analyzeTeamComp(t.picks);
+                let engageLine;
+                if (engagers.length === 0) engageLine = `<span class="text-rose-300">Không có ai mở giao tranh được.</span>`;
+                else if (engagers.length === 1) engageLine = `<span class="text-amber-300">Chỉ mình <b>${engagers[0]}</b> mở giao tranh — mất tướng này là mất khả năng chủ động.</span>`;
+                else engageLine = `<span class="text-emerald-300">${engagers[0]} mở chính, <b>${engagers.slice(1).join(', ')}</b> là phương án dự phòng.</span>`;
+                return `<div class="mb-3 text-xs">
+                    <div class="font-bold ${t.color} mb-1">${t.name}</div>
+                    <div class="mb-0.5"><span class="text-slate-400">Backup Engage:</span> ${engageLine}</div>
+                    <div class="mb-0.5"><span class="text-slate-400">Gỡ khống chế:</span> ${cleansers.length > 0 ? `<span class="text-emerald-300">${cleansers.join(', ')}</span>` : '<span class="text-rose-300">Không có — dễ bị chuỗi CC khóa chết.</span>'}</div>
+                    <div><span class="text-slate-400">Nguồn sát thương:</span> <span class="text-slate-200">${dmg.physical} Vật lý / ${dmg.magic} Phép / ${dmg.utility} Phụ trợ</span></div>
+                </div>`;
+            }).join('');
+        }
+
+        // --- SO SÁNH LOẠI SÁT THƯƠNG 2 ĐỘI ---
+        function renderDamageComparison() {
+            const el = document.getElementById('damage-comparison');
+            if (!el) return;
+            const teams = [
+                { name: 'Blue Team', color: 'text-blue-400', picks: simState.blue.pick.filter(h => h) },
+                { name: 'Red Team', color: 'text-rose-400', picks: simState.red.pick.filter(h => h) }
+            ];
+            el.innerHTML = teams.map(t => {
+                const { dmg } = analyzeTeamComp(t.picks);
+                const dealers = dmg.physical + dmg.magic;
+                const pPct = dealers > 0 ? (dmg.physical / dealers) * 100 : 0;
+                const mPct = dealers > 0 ? (dmg.magic / dealers) * 100 : 0;
+                let verdict;
+                if (dealers === 0) verdict = '<span class="text-slate-500">Chưa có nguồn sát thương.</span>';
+                else if (dmg.magic === 0) verdict = '<span class="text-rose-300 font-bold">⚠️ Thuần Vật lý — đối phương chỉ cần lên Giáp.</span>';
+                else if (dmg.physical === 0) verdict = '<span class="text-rose-300 font-bold">⚠️ Thuần Phép — đối phương chỉ cần lên Kháng phép.</span>';
+                else verdict = '<span class="text-emerald-300">Cân bằng, đối phương phải chia đều giáp và kháng phép.</span>';
+                return `<div class="mb-4">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="font-bold ${t.color}">${t.name}</span>
+                        <span class="text-xs text-slate-400">${dmg.physical} Vật lý · ${dmg.magic} Phép · ${dmg.utility} Phụ trợ</span>
+                    </div>
+                    <div class="flex rounded overflow-hidden mb-1.5" style="height:14px;background:#334155;">
+                        <div style="width:${pPct}%;background:#f97316;"></div>
+                        <div style="width:${mPct}%;background:#a78bfa;"></div>
+                    </div>
+                    <div class="text-xs">${verdict}</div>
+                </div>`;
+            }).join('') + `<div class="text-[11px] text-slate-500 mt-2"><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle" style="background:#f97316"></span> Vật lý &nbsp; <span class="inline-block w-2.5 h-2.5 rounded-sm align-middle" style="background:#a78bfa"></span> Phép</div>`;
+        }
+
         function resetSimulator() {
             simStep = 0;
+            simHistory = [];
             simState.blue = { ban: [null, null, null, null], pick: [null, null, null, null, null] };
             simState.red = { ban: [null, null, null, null], pick: [null, null, null, null, null] };
             document.getElementById('sim-finish-panel').classList.add('hidden');
@@ -1471,6 +1689,9 @@
             updateSimUI();
             renderSimPool();
             renderAdvice();
+            refreshPostDraftPanels();
+            saveDraftState();
+            restartTimerIfRunning();
         }
 
         function switchTab(tabId, btn) {
@@ -1496,13 +1717,36 @@
         document.getElementById('meta-filter-pos').addEventListener('change', renderMeta);
         document.getElementById('meta-filter-tier').addEventListener('change', renderMeta);
         document.getElementById('meta-filter-min-tier').addEventListener('change', renderMeta);
+        document.getElementById('sim-meta-only').addEventListener('change', renderSimPool);
+        document.getElementById('sim-timer-length').addEventListener('change', restartTimerIfRunning);
 
         renderDraft();
         renderMeta();
         renderSeriesLockUI();
+
+        // Khôi phục draft đang dở (nếu có) trước khi render simulator
+        const restored = loadDraftState();
         renderSimPool();
         updateSimUI();
         renderAdvice();
+        refreshPostDraftPanels();
+        if (restored) {
+            refreshCounterPanel();
+            if (simStep >= draftSteps.length) {
+                document.getElementById('sim-action-panel').classList.add('hidden');
+                document.getElementById('sim-finish-panel').classList.remove('hidden');
+                document.getElementById('sim-post-draft').classList.remove('hidden');
+                renderTeamMatrix();
+                renderSpikeTimeline();
+                renderGameplan();
+                renderAutoAnalysis();
+                renderDamageComparison();
+            } else {
+                document.getElementById('sim-next-step').innerText = simStep === 0
+                    ? `Bắt đầu: ${draftSteps[0].label}`
+                    : `Lượt tiếp theo: ${draftSteps[simStep].label}`;
+            }
+        }
     </script>
 </body>
 </html>
