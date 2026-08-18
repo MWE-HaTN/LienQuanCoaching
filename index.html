@@ -1189,15 +1189,32 @@
             const warnings = buildCompWarnings(myPicks);
             const needs = warnings.map(w => w.need);
             const { tools: myTools } = analyzeTeamComp(myPicks);
+            // Độ sâu pool ở các vị trí mình còn thiếu — vị trí sắp cạn phải lấy trước, để lượt sau là hết hàng
+            const depthMap = {};
+            buildPositionDepth(available, myOpenPos).forEach(x => { depthMap[x.pos] = x.count; });
 
             return available.map(d => {
                 let score = 0;
                 const reasons = [];
 
                 // 1. Vị trí: ưu tiên mạnh tướng lấp đúng chỗ trống, phạt nặng tướng trùng vị trí đã có
+                const servable = [];
+                if (myOpenPos.includes(d.pos)) servable.push(d.pos);
+                if (d.flex && d.flex !== '—' && myOpenPos.includes(d.flex)) servable.push(d.flex);
                 if (myOpenPos.includes(d.pos)) { score += 30; reasons.push(`lấp ${d.pos}`); }
-                else if (d.flex && d.flex !== '—' && myOpenPos.includes(d.flex)) { score += 22; reasons.push(`flex sang ${d.flex}`); }
+                else if (servable.length > 0) { score += 22; reasons.push(`flex sang ${d.flex}`); }
                 else { score -= 45; }
+
+                // 1b. Vị trí sắp cạn tướng mạnh -> cộng điểm để lấy trước (tính theo vị trí khan hiếm nhất
+                // mà tướng này phủ được, vì tướng flex có thể lấp đúng chỗ đang thiếu hàng)
+                if (servable.length > 0) {
+                    const scarcest = servable.reduce((best, p) => ((depthMap[p] !== undefined ? depthMap[p] : 99) < (depthMap[best] !== undefined ? depthMap[best] : 99) ? p : best), servable[0]);
+                    const left = depthMap[scarcest];
+                    if (left !== undefined && left <= 3) {
+                        score += left <= 2 ? 18 : 10;
+                        reasons.push(`${scarcest} sắp cạn (còn ${left})`);
+                    }
+                }
 
                 // 2. Counter trực tiếp từng tướng đối phương đã pick
                 oppPicks.forEach(op => {
@@ -1330,18 +1347,51 @@
             }).sort((a, b) => a.count - b.count);
         }
 
+        // Đếm số tướng mạnh (S+/S) ĐÃ mất ở từng vị trí do cấm/pick. Cấm 2-3 tướng đi được đường trên
+        // nghĩa là pool Caesar đang cạn — điều này ảnh hưởng cả 2 đội, không riêng đội đi cấm.
+        // Tướng flex tính cho cả 2 vị trí vì mất nó là mất lựa chọn ở cả hai.
+        function buildPositionDrain() {
+            const gone = getUnavailableHeroes();
+            const drain = { Caesar: [], Jungle: [], Mid: [], AD: [], Support: [] };
+            gone.forEach(name => {
+                const d = draftData.find(x => x.hero === name);
+                if (!d || tierRank(d.tier) > 1) return;
+                if (drain[d.pos]) drain[d.pos].push(name);
+                if (d.flex && d.flex !== '—' && drain[d.flex]) drain[d.flex].push(name);
+            });
+            return drain;
+        }
+
         function renderDepthLine(depth) {
             if (depth.length === 0) return '';
+            const drain = buildPositionDrain();
             const parts = depth.map(x => {
-                const cls = x.count === 0 ? 'text-slate-500' : x.count <= 2 ? 'text-emerald-300' : x.count <= 3 ? 'text-amber-300' : 'text-rose-300';
-                return `<span class="${cls}"><b>${x.pos}: ${x.count}</b>${x.names.length ? ` <span class="font-normal">(${x.names.join(', ')})</span>` : ''}</span>`;
+                const cls = x.count === 0 ? 'text-slate-500' : x.count <= 3 ? 'text-emerald-300' : x.count <= 5 ? 'text-amber-300' : 'text-rose-300';
+                const lost = drain[x.pos] ? drain[x.pos].length : 0;
+                return `<span class="${cls}"><b>${x.pos}: ${x.count}</b>${lost > 0 ? `<span class="text-slate-500 font-normal"> (đã mất ${lost})</span>` : ''}</span>`;
             });
-            const shallow = depth.find(x => x.count > 0 && x.count <= 2);
+            const shallow = depth.find(x => x.count > 0 && x.count <= 3);
             const deep = depth[depth.length - 1];
             let verdict = '';
-            if (shallow) verdict += ` → <b class="text-emerald-300">${shallow.pos}</b> là vị trí mỏng nhất của họ, cấm ở đây tạo khan hiếm nhanh nhất.`;
-            if (deep && deep.count >= 4) verdict += ` Cấm ở <b class="text-rose-300">${deep.pos}</b> gần như vô nghĩa — họ còn ${deep.count} tướng tương đương.`;
+            if (shallow) {
+                const lost = drain[shallow.pos] || [];
+                verdict += ` → <b class="text-emerald-300">${shallow.pos}</b> mỏng nhất, chỉ còn <b>${shallow.names.join(', ')}</b>${lost.length >= 2 ? ` (đã bay ${lost.join(', ')})` : ''} — cấm ở đây tạo khan hiếm nhanh nhất.`;
+            }
+            if (deep && deep.count >= 6) verdict += ` Cấm ở <b class="text-rose-300">${deep.pos}</b> gần như vô nghĩa — họ còn ${deep.count} tướng tương đương.`;
             return `<div class="mb-2"><b class="text-cyan-300">📊 Lựa chọn mạnh (S+/S) họ còn theo vị trí:</b> ${parts.join(' · ')}${verdict}</div>`;
+        }
+
+        // Vị trí MÌNH còn thiếu mà pool sắp cạn -> phải lấy sớm, đừng để dành tới lượt cuối là hết hàng.
+        function renderScarcityWarning(available, myOpenPos, myPicksLeft) {
+            if (myPicksLeft <= 1) return '';
+            const drain = buildPositionDrain();
+            const scarce = buildPositionDepth(available, myOpenPos).filter(x => x.count <= 3);
+            if (scarce.length === 0) return '';
+            return scarce.slice(0, 2).map(x => {
+                const lost = drain[x.pos] || [];
+                const urgent = x.count <= myPicksLeft; // ít lựa chọn hơn (hoặc bằng) số lượt còn lại = dễ bị cướp mất
+                return `<div class="mb-1">${priorityBadge[urgent ? 1 : 2]} <span class="text-slate-200">⏳ <b>${x.pos}</b> chỉ còn <b class="${x.count <= 2 ? 'text-rose-300' : 'text-amber-300'}">${x.count}</b> lựa chọn mạnh${x.names.length ? ` (${x.names.join(', ')})` : ''}${lost.length >= 2 ? `, đã bay ${lost.length} tướng` : ''} mà bạn còn ${myPicksLeft} lượt pick — lấy sớm, để dành tới lượt cuối là hết hàng.</span></div>`;
+            }).join('');
         }
 
         // --- KIỂM TRA NGƯỢC TRƯỚC KHI KHÓA LƯỢT: nước này để lại gì cho đối phương? ---
@@ -1454,9 +1504,17 @@
                     const depthMap = {};
                     depth.forEach(x => { depthMap[x.pos] = x.count; });
                     const thinnest = depth.find(x => x.count > 0);
+                    // Tướng flex bị cấm sẽ rút lựa chọn ở CẢ 2 vị trí, nên phải tính cho cả hai
+                    // (vd cấm Billow là vừa siết Jungle vừa siết Caesar).
                     const rankedBans = buildRankedBans(available, myPicks, oppPicks, oppOpenPos)
-                        .map(x => ({ ...x, depth: depthMap[x.d.pos] !== undefined ? depthMap[x.d.pos] : 99 }))
-                        .sort((a, b) => (tierRank(a.d.tier) - tierRank(b.d.tier)) || (a.depth - b.depth));
+                        .map(x => {
+                            const posList = [x.d.pos];
+                            if (x.d.flex && x.d.flex !== '—' && depthMap[x.d.flex] !== undefined) posList.push(x.d.flex);
+                            const self = tierRank(x.d.tier) <= 1 ? 1 : 0; // trừ chính tướng sắp cấm
+                            const after = posList.map(p => ({ pos: p, left: Math.max(0, (depthMap[p] || 0) - self) }));
+                            return { ...x, after, minLeft: Math.min(...after.map(a => a.left)) };
+                        })
+                        .sort((a, b) => (tierRank(a.d.tier) - tierRank(b.d.tier)) || (a.minLeft - b.minLeft));
                     const sections = [renderDepthLine(depth)];
 
                     if (thinnest && thinnest.count >= 4) {
@@ -1465,8 +1523,9 @@
                     if (rankedBans.length > 0) {
                         sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-2">` +
                             rankedBans.slice(0, 3).map((x, i) => {
-                                const left = x.depth - (tierRank(x.d.tier) <= 1 ? 1 : 0); // trừ chính tướng sắp cấm
-                                return `<div>${priorityBadge[i === 0 ? 2 : 3]} ${heroChip(x.d)}<div class="text-[11px] ml-1 mt-0.5 ${left <= 2 ? 'text-emerald-300' : 'text-slate-400'}">↳ cấm xong ${x.d.pos} của họ còn ${left} lựa chọn mạnh${left <= 2 ? ' — siết pool nhanh nhất trong các phương án' : ' — họ thay thế được dễ, cấm vì bản thân tướng mạnh chứ không siết được vị trí'}</div></div>`;
+                                const detail = x.after.map(a => `${a.pos} còn ${a.left}`).join(', ');
+                                const flexNote = x.after.length > 1 ? ` <span class="text-cyan-300">(tướng flex — siết được cả 2 đường)</span>` : '';
+                                return `<div>${priorityBadge[i === 0 ? 2 : 3]} ${heroChip(x.d)}<div class="text-[11px] ml-1 mt-0.5 ${x.minLeft <= 2 ? 'text-emerald-300' : 'text-slate-400'}">↳ cấm xong ${detail} lựa chọn mạnh${flexNote}${x.minLeft <= 2 ? ' — siết pool nhanh nhất trong các phương án' : ' — họ thay thế được dễ, cấm vì bản thân tướng mạnh chứ không siết được vị trí'}</div></div>`;
                             }).join('') +
                             `</div></div>`);
                     } else {
@@ -1492,6 +1551,11 @@
                 if (hasLastPick && oppPicks.length > 0) {
                     sections.push(`<div class="mb-2 text-emerald-300 font-bold">👑 Bạn giữ Last Pick — đối phương không còn lượt pick nào để phản đòn, cứ hard-counter thẳng, không cần giấu bài.</div>`);
                 }
+
+                // Vị trí mình còn thiếu mà pool đang cạn -> ưu tiên lấy trước
+                const myPicksLeft = draftSteps.slice(simStep).filter(s => s.type === 'pick' && s.team === myTeam).length;
+                const scarcityHtml = renderScarcityWarning(available, myOpenPos, myPicksLeft);
+                if (scarcityHtml) sections.push(`<div class="mb-2">${scarcityHtml}</div>`);
 
                 // Cảnh báo mất cân bằng đội hình (sát thương / công cụ), sắp theo mức ưu tiên
                 if (warnings.length > 0) {
