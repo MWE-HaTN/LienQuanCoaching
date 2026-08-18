@@ -1317,14 +1317,17 @@
                 if (oppPicks.length > 0) {
                     // Ban phase 2: chỉ cấm tướng đối phương CÒN PICK ĐƯỢC — vị trí họ đã lấp kín thì cấm là phí lượt
                     const oppFilledPos = ["Caesar", "Jungle", "Mid", "AD", "Support"].filter(p => !oppOpenPos.includes(p));
-                    context = `<span class="text-slate-300">Đối phương đã Pick: <b class="text-rose-400">${oppPicks.join(', ')}</b>. Còn trống: <b class="text-amber-300">${oppOpenPos.join(', ') || 'không còn'}</b>${oppFilledPos.length > 0 ? ` — đã kín <b class="text-slate-500">${oppFilledPos.join(', ')}</b> (cấm vị trí này là phí lượt)` : ''}.</span>`;
+                    const oppPicksLeft = draftSteps.slice(simStep).filter(s => s.type === 'pick' && s.team === opponent).length;
+                    const forced = oppPicksLeft > 0 && oppPicksLeft === oppOpenPos.length;
+                    context = `<span class="text-slate-300">Đối phương đã Pick: <b class="text-rose-400">${oppPicks.join(', ')}</b>. Còn <b class="text-amber-300">${oppPicksLeft} lượt pick</b> cho <b class="text-amber-300">${oppOpenPos.join(', ')}</b>${oppFilledPos.length > 0 ? ` — đã kín <b class="text-slate-500">${oppFilledPos.join(', ')}</b> (cấm vị trí này là phí lượt)` : ''}.</span>`;
 
                     const rankedBans = buildRankedBans(available, myPicks, oppPicks, oppOpenPos);
                     const sections = [];
 
-                    if (oppOpenPos.length === 0) {
-                        sections.push(`<div class="text-amber-300">${priorityBadge[3]} Đối phương đã đủ 5 vị trí — lượt cấm này gần như không chặn được pick nào của họ. Hãy cấm theo tướng tủ của player hoặc tướng flex mạnh còn lại.</div>`);
-                    } else if (rankedBans.length > 0) {
+                    if (forced) {
+                        sections.push(`<div class="mb-2 text-emerald-300 font-bold">🔒 Họ còn đúng ${oppPicksLeft} lượt pick cho ${oppOpenPos.length} vị trí trống — buộc phải lấy tướng ở ${oppOpenPos.join(' và ')}, không né đi đâu được. Cấm vào đây là ép trực tiếp.</div>`);
+                    }
+                    if (rankedBans.length > 0) {
                         sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-1">` +
                             rankedBans.slice(0, 3).map((x, i) => `<div>${priorityBadge[i === 0 ? 1 : 2]} ${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span></div>`).join('') +
                             `</div></div>`);
