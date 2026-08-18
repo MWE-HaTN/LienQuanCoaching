@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lien Quan Draft Book 2026 (Coach Edition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        h1, h2, h3, .heading { font-family: 'Rajdhani', sans-serif; letter-spacing: 0.05em; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 4px; }
+        .table-cell { border-bottom: 1px solid #334155; padding: 12px 16px; vertical-align: top; }
+        .tier-s-plus { color: #fbbf24; font-weight: 700; text-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }
+        .tier-s { color: #a78bfa; font-weight: 700; }
+        .tier-a-plus { color: #38bdf8; font-weight: 700; }
+        .tier-a { color: #34d399; font-weight: 700; }
+        .tab-active { background-color: #f59e0b; color: #0f172a !important; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
+        .nav-link { transition: all 0.3s ease; }
+        .nav-link:hover:not(.tab-active) { background-color: #334155; }
+        .card-glow:hover { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); transition: box-shadow 0.3s ease; }
+        .missing-data { color: #64748b; font-style: italic; text-decoration: line-through; text-decoration-color: #ef4444; }
+        .check-list input[type="checkbox"] { accent-color: #f59e0b; width: 18px; height: 18px; cursor: pointer; }
+        
+        /* Draft Simulator Styles */
+        .sim-hero-btn { transition: all 0.2s; border: 1px solid #334155; }
+        .sim-hero-btn:hover { border-color: #f59e0b; background-color: #1e293b; transform: translateY(-2px); }
+        .sim-hero-btn.selected { opacity: 0.3; pointer-events: none; }
+        .sim-hero-btn.banned { opacity: 0.3; pointer-events: none; position: relative; }
+        .sim-hero-btn.banned::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #ef4444; transform: rotate(-45deg); }
+        .sim-slot { min-height: 60px; border: 2px dashed #334155; border-radius: 8px; transition: all 0.3s; }
+        .sim-slot.filled { border-style: solid; }
+        .sim-slot.blue { border-color: #3b82f6; background-color: rgba(59, 130, 246, 0.1); }
+        .sim-slot.red { border-color: #ef4444; background-color: rgba(239, 68, 68, 0.1); }
+        .sim-slot.active { 
+            border-color: #f59e0b; 
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); 
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
+            100% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.2); }
+        }
+
+        /* Win Condition Matrix Bars */
+        .wc-bar-bg { background-color: #334155; border-radius: 4px; height: 8px; width: 100%; overflow: hidden; }
+        .wc-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b-4 border-amber-500 shadow-lg mb-8 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                <div class="bg-amber-500 text-slate-900 p-2 rounded-lg font-bold text-xl heading">LQ</div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-amber-400 heading leading-none">DRAFT BOOK 2026 (COACH ED.)</h1>
+                    <p class="text-xs text-slate-400">Pro Draft Format - Complete Hero Pool - Comp Matrix</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2 text-sm">
+                <button class="nav-link tab-active px-4 py-2 rounded-lg font-semibold text-slate-200" onclick="switchTab('draft', this)">Draft Board</button>
+                <button class="nav-link px-4 py-2 rounded-lg font-semibold text-slate-200" onclick="switchTab('simulator', this)">Draft Simulator</button>
+                <button class="nav-link px-4 py-2 rounded-lg font-semibold text-slate-200" onclick="switchTab('coach', this)">Coach Draft</button>
+                <button class="nav-link px-4 py-2 rounded-lg font-semibold text-slate-200" onclick="switchTab('meta', this)">Meta Snapshot</button>
+                <button class="nav-link px-4 py-2 rounded-lg font-semibold text-slate-200" onclick="switchTab('rules', this)">Rules & Sources</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 pb-20">
+        
+        <!-- TAB 1: DRAFT BOARD -->
+        <section id="draft-tab" class="tab-content">
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <input type="text" id="search-hero" placeholder="Tìm tướng..." class="w-full md:w-1/3 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-amber-500">
+                <select id="filter-pos" class="w-full md:w-1/4 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="">Tất cả vị trí</option>
+                    <option value="Caesar">Caesar</option>
+                    <option value="Jungle">Jungle</option>
+                    <option value="Mid">Mid</option>
+                    <option value="AD">AD</option>
+                    <option value="Support">Support</option>
+                </select>
+                <select id="filter-tier" class="w-full md:w-1/4 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="">Tất cả Tier</option>
+                    <option value="S+">S+</option>
+                    <option value="S">S</option>
+                    <option value="A+">A+</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                </select>
+            </div>
+
+            <div class="overflow-x-auto bg-slate-800/50 rounded-lg shadow-xl border border-slate-700">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-900 text-amber-500 heading text-xs uppercase">
+                        <tr>
+                            <th class="p-3">Vị trí</th>
+                            <th class="p-3">Tướng</th>
+                            <th class="p-3">Tier</th>
+                            <th class="p-3">Ban/Pick</th>
+                            <th class="p-3">First Pick</th>
+                            <th class="p-3">Flex Pick</th>
+                            <th class="p-3">Power Spike</th>
+                            <th class="p-3">Counter Pool</th>
+                            <th class="p-3">Phối hợp</th>
+                            <th class="p-3">Đk sử dụng</th>
+                            <th class="p-3">Đk Ban</th>
+                            <th class="p-3">Win Condition</th>
+                            <th class="p-3">WR / Presence</th>
+                            <th class="p-3">Nguồn</th>
+                        </tr>
+                    </thead>
+                    <tbody id="draft-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 2: DRAFT SIMULATOR -->
+        <section id="simulator-tab" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-amber-400 mb-6 heading">Draft Simulator (Pro Format)</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Team Blue -->
+                <div class="bg-slate-800/50 p-4 rounded-lg shadow-xl border border-blue-500/30">
+                    <h3 class="text-xl font-bold text-blue-400 mb-4 heading text-center">TEAM BLUE</h3>
+                    <div class="mb-4">
+                        <p class="text-xs text-slate-400 mb-2 font-semibold uppercase">Bans (4)</p>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div id="blue-ban-1" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">B1</div>
+                            <div id="blue-ban-2" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">B2</div>
+                            <div id="blue-ban-3" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">B3</div>
+                            <div id="blue-ban-4" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">B4</div>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 mb-2 font-semibold uppercase">Picks (5)</p>
+                        <div class="grid grid-cols-5 gap-2">
+                            <div id="blue-pick-1" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">P1</div>
+                            <div id="blue-pick-2" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">P2</div>
+                            <div id="blue-pick-3" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">P3</div>
+                            <div id="blue-pick-4" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">P4</div>
+                            <div id="blue-pick-5" class="sim-slot blue flex items-center justify-center text-xs text-slate-500 text-center p-2">P5</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Pool & Info -->
+                <div class="bg-slate-800/50 p-4 rounded-lg shadow-xl border border-slate-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-amber-400 heading">Hero Pool</h3>
+                        <button onclick="resetSimulator()" class="text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded hover:bg-rose-500/30 transition">Reset</button>
+                    </div>
+                    
+                    <div class="flex flex-col gap-2 mb-4">
+                        <input type="text" id="sim-search" placeholder="Tìm tướng..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="sim-filter-pos" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                                <option value="">Tất cả Vị trí</option>
+                                <option value="Caesar">Caesar</option>
+                                <option value="Jungle">Jungle</option>
+                                <option value="Mid">Mid</option>
+                                <option value="AD">AD</option>
+                                <option value="Support">Support</option>
+                            </select>
+                            <select id="sim-filter-class" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                                <option value="">Tất cả Vai trò</option>
+                                <option value="Đấu sĩ">Đấu sĩ</option>
+                                <option value="Sát thủ">Sát thủ</option>
+                                <option value="Pháp sư">Pháp sư</option>
+                                <option value="Xạ thủ">Xạ thủ</option>
+                                <option value="Trợ thủ">Trợ thủ</option>
+                                <option value="Đỡ đòn">Đỡ đòn</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="sim-hero-pool" class="grid grid-cols-4 md:grid-cols-5 gap-2 max-h-[300px] overflow-y-auto pr-2"></div>
+                    
+                    <div class="mt-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                        <h4 class="text-amber-400 font-bold heading mb-2 text-sm">Gợi ý Đối Phương (Counter)</h4>
+                        <div id="sim-counter-info" class="text-sm text-slate-300 min-h-[40px]">
+                            <span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Red -->
+                <div class="bg-slate-800/50 p-4 rounded-lg shadow-xl border border-rose-500/30">
+                    <h3 class="text-xl font-bold text-rose-400 mb-4 heading text-center">TEAM RED</h3>
+                    <div class="mb-4">
+                        <p class="text-xs text-slate-400 mb-2 font-semibold uppercase">Bans (4)</p>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div id="red-ban-1" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">B1</div>
+                            <div id="red-ban-2" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">B2</div>
+                            <div id="red-ban-3" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">B3</div>
+                            <div id="red-ban-4" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">B4</div>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 mb-2 font-semibold uppercase">Picks (5)</p>
+                        <div class="grid grid-cols-5 gap-2">
+                            <div id="red-pick-1" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">P1</div>
+                            <div id="red-pick-2" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">P2</div>
+                            <div id="red-pick-3" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">P3</div>
+                            <div id="red-pick-4" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">P4</div>
+                            <div id="red-pick-5" class="sim-slot red flex items-center justify-center text-xs text-slate-500 text-center p-2">P5</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Coach Advice Box -->
+            <div id="sim-advice-box" class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-amber-500/40 mb-6"></div>
+
+            <!-- Win Condition Matrix & Advanced Checklist (Chỉ hiện khi Draft xong) -->
+            <div id="sim-post-draft" class="hidden mb-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Biểu đồ Win Condition -->
+                    <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700">
+                        <h3 class="text-xl font-bold text-amber-400 mb-4 heading">Win Condition Matrix</h3>
+                        <div id="wc-blue-team" class="mb-6"></div>
+                        <div id="wc-red-team"></div>
+                    </div>
+                    
+                    <!-- Bảng kiểm tra Hại Não (Advanced Checklist) -->
+                    <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700 check-list">
+                        <h3 class="text-xl font-bold text-amber-400 mb-4 heading">Advanced "Hại Não" Checklist</h3>
+                        <div class="space-y-4 text-sm text-slate-300">
+                            <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">CC Chain (Chuỗi khống chế)</span><br><span class="text-slate-400 text-xs">Đối phương giữ chuỗi CC liên tục, đội mình có Cleanse/CC ngược không?</span></div></div>
+                            <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Late Game DPS</span><br><span class="text-slate-400 text-xs">Trận kéo dài 20', DPS có xuyên nổi giáp tuyến trước đối phương không?</span></div></div>
+                            <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Backup Engage</span><br><span class="text-slate-400 text-xs">Người mở giao tranh (Engage) chết trước, ai là người mở giao tranh thứ 2?</span></div></div>
+                            <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Win Condition Mismatch</span><br><span class="text-slate-400 text-xs">Có pick 3 tướng Snowball sớm nhưng lại pick 1 tướng Late Game không? (Lỗi định hướng)</span></div></div>
+                            <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Flex Pick Value</span><br><span class="text-slate-400 text-xs">Tướng pick lượt 1-2 có khả năng đổi vị trí (Flex) để làm khó đối phương không?</span></div></div>
+                            <div class="flex items-start gap-3"><input type="checkbox" class="mt-1"><div><span class="font-bold text-slate-100">Target Ban Efficiency</span><br><span class="text-slate-400 text-xs">Dùng 2 ban vào 2 tướng tủ của 1 player, hay dải ban ra 5 player khác nhau?</span></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simulator Action Menu -->
+            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 sticky bottom-4">
+                <div class="flex flex-wrap items-center justify-center gap-4">
+                    <div id="sim-action-panel" class="hidden flex-wrap gap-3 items-center justify-center">
+                        <div class="text-center md:text-left">
+                            <div class="text-xs text-slate-400">Lượt hiện tại</div>
+                            <div id="sim-current-step" class="font-bold text-amber-400 text-lg">Blue Ban 1</div>
+                        </div>
+                        <div class="text-center md:text-left">
+                            <div class="text-xs text-slate-400">Tướng đã chọn</div>
+                            <div id="sim-selected-hero" class="font-bold text-white text-lg">Chưa chọn</div>
+                            <div id="sim-hero-meta" class="text-xs text-cyan-400"></div>
+                        </div>
+                        <button onclick="confirmSimAction()" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700">Xác nhận</button>
+                        <button onclick="cancelSimSelect()" class="bg-slate-700 text-slate-300 px-3 py-2 rounded text-sm">Hủy chọn</button>
+                    </div>
+                    <div id="sim-idle-panel" class="text-center">
+                        <div class="text-amber-400 font-bold mb-1 text-lg" id="sim-next-step">Bắt đầu: Blue Ban 1</div>
+                        <div class="text-sm text-slate-400">👆 Click vào một tướng ở Hero Pool để tiến hành cấm/chọn theo quy trình Pro.</div>
+                    </div>
+                    <div id="sim-finish-panel" class="hidden text-emerald-400 font-bold text-xl text-center">🎉 DRAFT HOÀN TẤT! Chúc may mắn.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: COACH DRAFT -->
+        <section id="coach-tab" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-amber-400 mb-6 heading">Coach Draft Checklist</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700">
+                    <h3 class="text-xl font-bold text-amber-400 mb-4 heading">1. Quick Check & Phases</h3>
+                    <div class="space-y-3 text-sm text-slate-300">
+                        <div class="p-3 bg-slate-900 rounded border-l-4 border-sky-500"><b class="text-sky-400">PRE-DRAFT:</b> Meta, Player Threat, First Pick Plan.</div>
+                        <div class="p-3 bg-slate-900 rounded border-l-4 border-rose-500"><b class="text-rose-400">BAN 1-2:</b> Deny FP hay Target Player?</div>
+                        <div class="p-3 bg-slate-900 rounded border-l-4 border-amber-500"><b class="text-amber-400">PICK 1-3:</b> First Pick & Response.</div>
+                        <div class="p-3 bg-slate-900 rounded border-l-4 border-purple-500"><b class="text-purple-400">PICK 4-5:</b> Hoàn thiện đội hình.</div>
+                    </div>
+                </div>
+                <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700 check-list">
+                    <h3 class="text-xl font-bold text-amber-400 mb-4 heading">2. Basic Team Comp Check</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-300">
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Early Game</span></div>
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Mid Game</span></div>
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Late Game</span></div>
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Frontline</span></div>
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Engage</span></div>
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Peel</span></div>
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Wave Clear</span></div>
+                        <div class="flex items-start gap-2"><input type="checkbox" class="mt-1"><span>Objective Control</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: META SNAPSHOT -->
+        <section id="meta-tab" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-amber-400 mb-6 heading">Meta Snapshot</h2>
+            <div class="overflow-x-auto bg-slate-800/50 rounded-lg shadow-xl border border-slate-700">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-900 text-amber-500 heading text-xs uppercase">
+                        <tr>
+                            <th class="p-3">Vị trí</th><th class="p-3">Tướng</th><th class="p-3">Tier</th><th class="p-3">Meta WR</th>
+                            <th class="p-3">Pick Rate</th><th class="p-3">Ban Rate</th><th class="p-3">Presence</th>
+                            <th class="p-3">Giải/Nguồn</th><th class="p-3">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="meta-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 5: RULES & SOURCES -->
+        <section id="rules-tab" class="tab-content hidden">
+             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700 card-glow">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4 heading">Ma trận Win Condition</h2>
+                    <div class="space-y-3 text-sm text-slate-300">
+                        <p class="text-slate-400 text-xs"><span class="font-bold text-rose-400">Early Snowball:</span> Ăn mục tiêu nhỏ, lùn đường, kết thúc trước 15'.</p>
+                        <p class="text-slate-400 text-xs"><span class="font-bold text-amber-400">Front-to-Back:</span> Đánh từng lớp tuyến trước, bảo kê AD.</p>
+                        <p class="text-slate-400 text-xs"><span class="font-bold text-emerald-400">Dive / Split:</span> Bắt lẻ, cắt ngang, đẩy lẻ tạo áp lực.</p>
+                        <p class="text-slate-400 text-xs"><span class="font-bold text-sky-400">Late Game Scaling:</span> Coi đường, chờ tore rồng, đánh 1 pha 5v5 cuối trận.</p>
+                    </div>
+                </div>
+                <div class="bg-slate-800/50 p-6 rounded-lg shadow-xl border border-slate-700 card-glow">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4 heading">Sources</h2>
+                     <a href="https://liquipedia.net/honorofkings/Arena_of_Valor_Premier_League/2026/Statistics" target="_blank" class="block p-3 bg-slate-900 rounded hover:bg-slate-700 transition">
+                        <span class="font-bold text-sky-400">APL 2026 Main Event</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // DATA: Draft Board (41 Tướng Meta - Cập nhật theo Tier List S3-2026)
+        const draftData = [
+            { pos: "Caesar", hero: "Florentino", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Early/Mid", counter: "Arthur / Zuka / Volkath", sync: "Dolia, Gildur", use: "Cần đấu sĩ solo mạnh.", bancond: "Vẫn là mục tiêu cấm hàng đầu đường trên ở S3-2026.", wincond: "Thắng đường, ép cánh", wc_type: "split", wr: "48.5%", presence: "45.8%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "Caesar", hero: "Arthur", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid/Late", counter: "Lữ Bố / Triệu Vân / Ormarr", sync: "Toro, Dolia", use: "Lì lợm, hồi máu %, chống chịu giao tranh kéo dài, không cần lên đồ đắt vẫn mạnh.", bancond: "Cấm sớm nếu đối thủ không có công cụ giảm hồi máu/khống chế cứng.", wincond: "Giao tranh kéo dài", wc_type: "front-to-back", wr: "—", presence: "—", source: "Tier List S3-2026", status: "Chưa có dữ liệu" },
+            { pos: "Caesar", hero: "Zuka", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Early/Mid", counter: "Omen / Arthur / Volkath", sync: "Dolia, Y'bneth", use: "Cơ động cực cao, giáp ảo liên tục, dồn sát thương nhanh vào tướng máu giấy.", bancond: "Cấm nếu đội bạn có xạ thủ/pháp sư máu giấy dễ bị bắt lẻ.", wincond: "Bắt lẻ, xóa sổ carry", wc_type: "dive", wr: "—", presence: "—", source: "Tier List S3-2026", status: "Chưa có dữ liệu" },
+            { pos: "Caesar", hero: "Volkath", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "Jungle", spike: "Mid/Late", counter: "Omen / Liliana / Gildur", sync: "Dolia, Alice", use: "Combo tích điểm nội tại, miễn nhiễm khống chế và \"bất tử\" tạm thời ở chiêu cuối.", bancond: "Ưu tiên cấm khi đối thủ thiếu khống chế cứng hoặc trang bị giảm hồi máu.", wincond: "Dive tuyến sau, sống sót giao tranh", wc_type: "dive", wr: "—", presence: "—", source: "Tier List S3-2026", status: "Chưa có dữ liệu" },
+            { pos: "Caesar", hero: "Ryoma", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Early/Mid", counter: "Yena / Omen / Qi", sync: "Dolia, Alice", use: "Cấu rỉa, áp lực sớm.", bancond: "Mối đe dọa cụ thể, vẫn cực mạnh ở S3-2026.", wincond: "Poke thành mục tiêu", wc_type: "front-to-back", wr: "53.6%", presence: "34.8%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "Caesar", hero: "Yena", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "—", spike: "Mid", counter: "Florentino / Arthur / Volkath", sync: "Dolia, Gildur", use: "Cơ động, áp lực cánh.", bancond: "Không còn là ưu tiên cấm hàng đầu như trước, nhưng vẫn nguy hiểm với player giỏi.", wincond: "Áp lực cánh", wc_type: "split", wr: "42.9%", presence: "27.1%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "Caesar", hero: "Qi", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "—", spike: "Mid", counter: "Yena / Ryoma / Omen", sync: "Dolia, Gildur", use: "Cần burst/CC.", bancond: "Phụ thuộc backline, đã hạ tier so với bản trước.", wincond: "Khóa tuyến sau", wc_type: "dive", wr: "56.3%", presence: "34.8%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "Caesar", hero: "Omen", tier: "B", ban: "P3", pick: "P3", fp: "Thấp", flex: "—", spike: "Mid/Late", counter: "Qi / Ryoma / Yena", sync: "Dolia, Alice", use: "Split-push.", bancond: "Ít phổ biến ở S3-2026, chỉ cấm nếu có player chuyên biệt.", wincond: "Cô lập mục tiêu", wc_type: "split", wr: "37.5%", presence: "40.4%", source: "AOG Spring 2026 GS1", status: "Có dữ liệu" },
+            { pos: "Caesar", hero: "Richter", tier: "B", ban: "P3", pick: "P3", fp: "Thấp", flex: "Jungle", spike: "Early/Mid", counter: "Yena / Florentino / Omen", sync: "Alice, Dolia", use: "Linh hoạt, đảo đường.", bancond: "Đã hạ tier mạnh, chỉ còn là lựa chọn phụ.", wincond: "Chuyển lane pressure", wc_type: "dive", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Caesar", hero: "Lữ Bố", tier: "B", ban: "P3", pick: "P3", fp: "Thấp", flex: "Jungle", spike: "Late", counter: "Arthur / Zuka / Qi", sync: "Alice, Y'bneth", use: "Giao tranh trực diện.", bancond: "Hạ tier, ưu tiên cấm thấp trừ khi đối thủ chuyên trị.", wincond: "Giao tranh kéo dài", wc_type: "front-to-back", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Jungle", hero: "Sinestrea", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Late", counter: "Nakroth / Paine / Zephys", sync: "Dolia, Y'bneth", use: "Carry jungle.", bancond: "Rừng đối phương gánh, vẫn top-ban ở S3-2026.", wincond: "Snowball sớm", wc_type: "late", wr: "59.4%", presence: "98.3%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "Jungle", hero: "Billow", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "Caesar", spike: "Early/Mid", counter: "Nakroth / Paine / Zephys", sync: "Dolia, Toro", use: "Ám sát/đánh úp từ bụi cỏ và mặt nước, dọn rừng nhanh nhờ Rìu Leviathan.", bancond: "Cấm sớm nếu đội bạn chưa có tầm nhìn tốt quanh sông/rừng.", wincond: "Đánh úp, kiểm soát mục tiêu lớn", wc_type: "snowball", wr: "—", presence: "—", source: "Tier List S3-2026", status: "Chưa có dữ liệu" },
+            { pos: "Jungle", hero: "Nakroth", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Aoi / Zephys / Zuka", sync: "Alice, Y'bneth", use: "Split-push.", bancond: "Mạnh macro, tăng tier ở S3-2026.", wincond: "Kéo giãn bản đồ", wc_type: "split", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Jungle", hero: "Paine", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Kriknak / Aoi / Zephys", sync: "Dolia, Alice", use: "Burst phép.", bancond: "Thiếu chống burst phép, tăng tier ở S3-2026.", wincond: "Bắt tuyến sau", wc_type: "dive", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Jungle", hero: "Zephys", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "Caesar", spike: "Early/Mid", counter: "Nakroth / Aoi / Kriknak", sync: "Dolia, Y'bneth", use: "Frontline, mở giao tranh, có thể flex sang top.", bancond: "Player thuần.", wincond: "Hấp thụ áp lực", wc_type: "front-to-back", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Jungle", hero: "Eland'orr", tier: "B", ban: "P3", pick: "P3", fp: "Trung bình", flex: "AD", spike: "Early/Mid", counter: "Aoi / Nakroth / Kriknak", sync: "Dolia, Y'bneth", use: "Cơ động, flex AD.", bancond: "Đã hạ tier mạnh so với bản trước, không còn là top-ban.", wincond: "Tempo sớm", wc_type: "snowball", wr: "55.6%", presence: "68.6%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "Jungle", hero: "Kriknak", tier: "B", ban: "P3", pick: "P3", fp: "Thấp", flex: "—", spike: "Early", counter: "Aoi / Nakroth / Zephys", sync: "Alice, Thane", use: "Burst mạnh, snowball.", bancond: "Nhiều CC bảo kê, đã hạ tier.", wincond: "Kết thúc sớm", wc_type: "snowball", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Jungle", hero: "Aoi", tier: "C", ban: "P3", pick: "P3", fp: "Thấp", flex: "—", spike: "Mid", counter: "Nakroth / Zephys / Kriknak", sync: "Dolia, Gildur", use: "Bắt mục tiêu giá trị cao.", bancond: "Hiếm khi xuất hiện ở meta S3-2026, gần như không còn cần cấm.", wincond: "Bắt mục tiêu", wc_type: "dive", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Mid", hero: "Yue", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid/Late", counter: "Zata / Raz / Liliana", sync: "Dolia, Y'bneth", use: "Cấu rỉa, kiểm soát.", bancond: "Vẫn S-tier, ưu tiên cấm hàng đầu.", wincond: "Kiểm soát mục tiêu", wc_type: "front-to-back", wr: "37.5%", presence: "11.3%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "Mid", hero: "Gildur", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "Support", spike: "Mid", counter: "Yue / Zata / Liliana", sync: "Dolia, Y'bneth", use: "Setup giao tranh.", bancond: "Vẫn S-tier, deny setup.", wincond: "Tạo pick", wc_type: "dive", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Mid", hero: "Zata", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Yue / Liliana / Raz", sync: "Dolia, Y'bneth", use: "Burst backline.", bancond: "Player Zata mạnh, vẫn top-ban.", wincond: "Loại tuyến sau", wc_type: "dive", wr: "53.3%", presence: "46.5%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "Mid", hero: "Raz", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Zata / Liliana / Yue", sync: "Dolia, Y'bneth", use: "Góc bắt lẻ.", bancond: "Tuyến sau mỏng, tăng tier ở S3-2026.", wincond: "Bắt mục tiêu tách", wc_type: "dive", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Mid", hero: "Lorion", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Late", counter: "Liliana / Zata / Raz", sync: "Dolia, Y'bneth", use: "Giao tranh tổng.", bancond: "Setup mạnh quanh Lorion, tăng tier ở S3-2026.", wincond: "Thắng giao tranh", wc_type: "late", wr: "58.9%", presence: "53.5%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "Mid", hero: "Liliana", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "Support", spike: "Mid", counter: "Yue / Raz / Zata", sync: "Dolia, Alice", use: "Cơ động, tái thiết lập.", bancond: "Đã hạ tier khá nhiều so với bản trước.", wincond: "Bắt lẻ", wc_type: "front-to-back", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Mid", hero: "Natalya", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "—", spike: "Late", counter: "Yue / Liliana / Raz", sync: "Dolia, Y'bneth", use: "Cấu rỉa choke point.", bancond: "Tướng tủ.", wincond: "Suy yếu trước giao tranh", wc_type: "front-to-back", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "AD", hero: "Flowborn", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Late", counter: "Hayate / Moren / Violet", sync: "Dolia, Y'bneth", use: "AD chủ lực.", bancond: "AD đối phương mạnh, vẫn top-ban.", wincond: "Giao tranh kéo dài", wc_type: "late", wr: "50.9%", presence: "63.5%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "AD", hero: "Hayate", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Late", counter: "Moren / Violet / Flowborn", sync: "Dolia, Y'bneth", use: "Anti-tank DPS.", bancond: "Player Hayate mạnh, tăng tier ở S3-2026.", wincond: "Bào mòn tuyến trước", wc_type: "front-to-back", wr: "55.6%", presence: "68.6%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "AD", hero: "Violet", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Hayate / Moren / Flowborn", sync: "Dolia, Alice", use: "Poke, mobility.", bancond: "Comfort pick, tăng tier ở S3-2026.", wincond: "Cấu rỉa, kết liễu", wc_type: "split", wr: "47.1%", presence: "31.8%", source: "AOG Spring 2026", status: "Có dữ liệu" },
+            { pos: "AD", hero: "Moren", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid/Late", counter: "Elsu / Violet / Hayate", sync: "Dolia, Y'bneth", use: "Bùng nổ sát thương diện rộng, cơ động như đấu sĩ/sát thủ sau khi làm lại bản 2026.", bancond: "Làm lại mạnh trong bản 2026, cần cấm nếu đối thủ chưa quen lối chơi cơ động.", wincond: "Giao tranh tổng, bùng nổ sát thương", wc_type: "front-to-back", wr: "—", presence: "—", source: "Tier List S3-2026", status: "Chưa có dữ liệu" },
+            { pos: "AD", hero: "Elsu", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "Mid", spike: "Late", counter: "Moren / Violet / Hayate", sync: "Dolia, Y'bneth", use: "Bắn tỉa tầm siêu xa, cấu rỉa trước giao tranh, cực kỳ mỏng máu.", bancond: "Cấm nếu đội bạn thiếu công cụ bắt lẻ tầm xa.", wincond: "Cấu rỉa từ xa, giữ khoảng cách", wc_type: "late", wr: "—", presence: "—", source: "Tier List S3-2026", status: "Chưa có dữ liệu" },
+            { pos: "AD", hero: "Capheny", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "—", spike: "Late", counter: "Hayate / Violet / Moren", sync: "Dolia, Y'bneth", use: "DPS front-to-back.", bancond: "Đã hạ tier khá nhiều so với bản trước.", wincond: "Đánh tuyến trước", wc_type: "front-to-back", wr: "55.6%", presence: "39.6%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "AD", hero: "Stuart", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "Caesar", spike: "Early/Mid", counter: "Violet / Capheny / Hayate", sync: "Alice, Annette", use: "Thắng lane sớm.", bancond: "Đội hình cần snowball.", wincond: "Ép lane, kết thúc sớm", wc_type: "snowball", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "AD", hero: "Tel'Annas", tier: "A", ban: "P2", pick: "P2", fp: "Trung bình", flex: "—", spike: "Late", counter: "Capheny / Violet / Hayate", sync: "Alice, Annette", use: "Tầm đánh + DPS cuối trận.", bancond: "Setup bảo kê mạnh.", wincond: "Front-to-back", wc_type: "late", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "AD", hero: "Yorn", tier: "B", ban: "P3", pick: "P3", fp: "Thấp", flex: "—", spike: "Late", counter: "Violet / Capheny / Hayate", sync: "Dolia, Y'bneth", use: "Scaling.", bancond: "Draft thiên late game, đã hạ tier.", wincond: "Tối đa DPS late", wc_type: "late", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Support", hero: "Dolia", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Alice / Y'bneth / Annette", sync: "Zata, Hayate, Florentino", use: "Reset, phối hợp chiêu cuối.", bancond: "Support đối phương thuần, vẫn top-ban.", wincond: "Reset giao tranh", wc_type: "front-to-back", wr: "56.5%", presence: "68.6%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "Support", hero: "Toro", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Early/Mid", counter: "Thane / Y'bneth / Alice", sync: "Yue, Capheny", use: "Hard engage.", bancond: "Đội bạn khó kite, tăng tier ở S3-2026.", wincond: "Ép giao tranh", wc_type: "dive", wr: "45.6%", presence: "56.6%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "Support", hero: "Alice", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Dolia / Y'bneth / Annette", sync: "Yue, Capheny", use: "AoE CC, bảo kê.", bancond: "Hưởng lợi AoE CC, tăng tier ở S3-2026.", wincond: "Bảo vệ carry", wc_type: "front-to-back", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Support", hero: "Aya", tier: "S+", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Mid", counter: "Alice / Dolia / Annette", sync: "Aoi, Nakroth, Capheny", use: "Khuếch đại carry.", bancond: "Combo Aya + carry mạnh, tăng tier ở S3-2026.", wincond: "Tạo ngưỡng sức mạnh", wc_type: "late", wr: "—", presence: "—", source: "—", status: "Chưa có dữ liệu" },
+            { pos: "Support", hero: "Y'bneth", tier: "S", ban: "P1", pick: "P1", fp: "Cao", flex: "—", spike: "Early/Mid", counter: "Dolia / Alice / Thane", sync: "Yue, Hayate", use: "Frontline, CC.", bancond: "Deny frontline.", wincond: "Khóa chủ lực", wc_type: "dive", wr: "60.0%", presence: "49.7%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "Support", hero: "Annette", tier: "S", ban: "P1", pick: "P2", fp: "Cao", flex: "Mid", spike: "Late", counter: "Alice / Thane / Toro", sync: "Capheny, Hayate", use: "Peel, disengage.", bancond: "Đối phương dive mạnh.", wincond: "Phá engage", wc_type: "front-to-back", wr: "55.6%", presence: "8.2%", source: "APL 2026 Main Event", status: "Có dữ liệu" },
+            { pos: "Support", hero: "Thane", tier: "B", ban: "P3", pick: "P3", fp: "Thấp", flex: "—", spike: "Early/Mid", counter: "Y'bneth / Toro / Alice", sync: "Capheny, Yue", use: "Frontline, mở giao tranh.", bancond: "Deny engage, đã hạ tier so với bản trước.", wincond: "Hấp thụ mở giao tranh", wc_type: "front-to-back", wr: "46.2%", presence: "20.1%", source: "AOG Spring 2026", status: "Có dữ liệu" }
+        ];
+
+        // DATA: TOÀN BỘ HERO POOL LIÊN QUÂN (Đã auto xây dựng Counter, Spike, Flex, WC)
+        const rawHeroes = [
+            { name: "Aleister", pos: "Support", class: "Pháp sư" }, { name: "Alice", pos: "Support", class: "Trợ thủ" }, { name: "Amily", pos: "Caesar", class: "Đấu sĩ" }, { name: "Annette", pos: "Support", class: "Trợ thủ" }, { name: "Aoi", pos: "Jungle", class: "Sát thủ" }, { name: "Arduin", pos: "Caesar", class: "Đỡ đòn" }, { name: "Arum", pos: "Caesar", class: "Đỡ đòn" }, { name: "Astrid", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ata", pos: "Caesar", class: "Đỡ đòn" }, { name: "Aya", pos: "Support", class: "Trợ thủ" }, { name: "Azzen'Ka", pos: "Mid", class: "Pháp sư" },
+            { name: "Baldum", pos: "Support", class: "Đỡ đòn" }, { name: "Billow", pos: "Jungle", class: "Sát thủ" }, { name: "Butterfly", pos: "Jungle", class: "Sát thủ" }, { name: "Capheny", pos: "AD", class: "Xạ thủ" }, { name: "Celica", pos: "AD", class: "Xạ thủ" }, { name: "Chaugnar", pos: "Support", class: "Trợ thủ" }, { name: "Điêu Thuyền", pos: "Mid", class: "Pháp sư" }, { name: "Dirak", pos: "Mid", class: "Pháp sư" }, { name: "Dolia", pos: "Support", class: "Trợ thủ" }, { name: "Dextra", pos: "AD", class: "Xạ thủ" },
+            { name: "Eland'orr", pos: "Jungle", class: "Sát thủ" }, { name: "Elsu", pos: "AD", class: "Xạ thủ" }, { name: "Enzo", pos: "Caesar", class: "Đấu sĩ" }, { name: "Arthur", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Fennik", pos: "AD", class: "Xạ thủ" }, { name: "Florentino", pos: "Caesar", class: "Đấu sĩ" }, { name: "Flowborn", pos: "AD", class: "Xạ thủ" },
+            { name: "Gildur", pos: "Mid", class: "Pháp sư" }, { name: "Grakk", pos: "Support", class: "Đỡ đòn" },
+            { name: "Hayate", pos: "AD", class: "Xạ thủ" },
+            { name: "Ignis", pos: "Mid", class: "Pháp sư" }, { name: "Ishar", pos: "Support", class: "Trợ thủ" },
+            { name: "Kaine", pos: "AD", class: "Xạ thủ" }, { name: "Keera", pos: "Jungle", class: "Sát thủ" }, { name: "Kil'Groth", pos: "Caesar", class: "Đấu sĩ" }, { name: "Kriknak", pos: "Jungle", class: "Sát thủ" }, { name: "Krizzix", pos: "Support", class: "Trợ thủ" },
+            { name: "Lauriel", pos: "Mid", class: "Pháp sư" }, { name: "Liliana", pos: "Mid", class: "Pháp sư" }, { name: "Lindis", pos: "AD", class: "Xạ thủ" }, { name: "Lorion", pos: "Mid", class: "Pháp sư" }, { name: "Lumburr", pos: "Support", class: "Đỡ đòn" }, { name: "Lữ Bố", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Maloch", pos: "Caesar", class: "Đỡ đòn" }, { name: "Marja", pos: "Mid", class: "Pháp sư" }, { name: "Max", pos: "Caesar", class: "Đấu sĩ" }, { name: "Mganga", pos: "Mid", class: "Pháp sư" }, { name: "Mina", pos: "Support", class: "Đỡ đòn" }, { name: "Moren", pos: "AD", class: "Xạ thủ" }, { name: "Murad", pos: "Jungle", class: "Sát thủ" },
+            { name: "Nakroth", pos: "Jungle", class: "Sát thủ" }, { name: "Natalya", pos: "Mid", class: "Pháp sư" },
+            { name: "Omen", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ormarr", pos: "Caesar", class: "Đỡ đòn" }, { name: "Omega", pos: "Support", class: "Đỡ đòn" },
+            { name: "Paine", pos: "Jungle", class: "Sát thủ" }, { name: "Helen", pos: "Support", class: "Trợ thủ" }, { name: "Preyta", pos: "Mid", class: "Pháp sư" },
+            { name: "Qi", pos: "Caesar", class: "Đấu sĩ" }, { name: "Quillen", pos: "Jungle", class: "Sát thủ" },
+            { name: "Raz", pos: "Mid", class: "Đấu sĩ" }, { name: "Richter", pos: "Caesar", class: "Đấu sĩ" }, { name: "Rouie", pos: "Support", class: "Trợ thủ" }, { name: "Rourke", pos: "Caesar", class: "Đấu sĩ" }, { name: "Ryoma", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Sephera", pos: "Support", class: "Pháp sư" }, { name: "Sinestrea", pos: "Jungle", class: "Sát thủ" }, { name: "Skud", pos: "Caesar", class: "Đỡ đòn" }, { name: "Slimz", pos: "AD", class: "Xạ thủ" }, { name: "Superman", pos: "Caesar", class: "Đấu sĩ" }, { name: "Stuart", pos: "AD", class: "Xạ thủ" },
+            { name: "TeeMee", pos: "Support", class: "Trợ thủ" }, { name: "Tel'Annas", pos: "AD", class: "Xạ thủ" }, { name: "Thane", pos: "Support", class: "Đỡ đòn" }, { name: "The Flash", pos: "AD", class: "Xạ thủ" }, { name: "Toro", pos: "Support", class: "Đỡ đòn" }, { name: "Triệu Vân", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Valhein", pos: "AD", class: "Xạ thủ" }, { name: "Veres", pos: "Caesar", class: "Đấu sĩ" }, { name: "Violet", pos: "AD", class: "Xạ thủ" }, { name: "Volkath", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Wiro", pos: "Caesar", class: "Đấu sĩ" }, { name: "Wonder Woman", pos: "Caesar", class: "Đấu sĩ" },
+            { name: "Xeniel", pos: "Support", class: "Đỡ đòn" },
+            { name: "Yena", pos: "Caesar", class: "Đấu sĩ" }, { name: "Yorn", pos: "AD", class: "Xạ thủ" }, { name: "Yue", pos: "Mid", class: "Pháp sư" }, { name: "Y'bneth", pos: "Support", class: "Đỡ đòn" },
+            { name: "Zanis", pos: "Jungle", class: "Đấu sĩ" }, { name: "Zata", pos: "Mid", class: "Pháp sư" }, { name: "Zephys", pos: "Jungle", class: "Đấu sĩ" }, { name: "Zill", pos: "Jungle", class: "Sát thủ" }, { name: "Zip", pos: "Support", class: "Đỡ đòn" }, { name: "Zuka", pos: "Caesar", class: "Đấu sĩ" }
+        ];
+
+        // Hàm sinh data cho toàn bộ Hero Pool dựa trên Class
+        const allHeroes = rawHeroes.map(h => {
+            const meta = draftData.find(d => d.hero === h.name);
+            if (meta) {
+                return { ...h, spike: meta.spike, flex: meta.flex, wc: meta.wc_type, counter: meta.counter };
+            }
+            // Logic tự động gán giá trị cho các tướng ngoài Meta
+            let wc = 'front-to-back';
+            let spike = 'Mid';
+            let flex = '—';
+            let counter = 'Tướng cơ động / Khống chế cứng';
+            
+            if (h.class === 'Sát thủ') { wc = 'dive'; spike = 'Early/Mid'; counter = 'Đỡ đòn / Khống chế diện rộng'; }
+            if (h.class === 'Xạ thủ') { wc = 'late'; spike = 'Late'; counter = 'Sát thủ / Tiếp cận nhanh'; }
+            if (h.class === 'Đỡ đòn') { wc = 'front-to-back'; spike = 'Early/Mid'; counter = 'Cấu rỉa / Tỷ lệ số người'; }
+            if (h.class === 'Pháp sư') { wc = 'front-to-back'; spike = 'Mid'; counter = 'Sát thủ / Kháng phép'; }
+            if (h.class === 'Trợ thủ') { wc = 'front-to-back'; spike = 'Mid'; counter = 'Bắt lẻ / Khống chế mạnh'; }
+            if (h.class === 'Đấu sĩ') { wc = 'split'; spike = 'Mid'; counter = 'Đỡ đòn / Kite tốt'; }
+            
+            return { ...h, spike, flex, wc, counter };
+        });
+
+
+        // Utility Functions
+        function getTierClass(tier) {
+            if(tier === "S+") return "tier-s-plus";
+            if(tier === "S") return "tier-s";
+            if(tier === "A+") return "tier-a-plus";
+            if(tier === "A") return "tier-a";
+            return "text-slate-300";
+        }
+        function getPosColor(pos) {
+            if(pos === "Caesar") return "text-red-400 bg-red-900/30";
+            if(pos === "Jungle") return "text-emerald-400 bg-emerald-900/30";
+            if(pos === "Mid") return "text-sky-400 bg-sky-900/30";
+            if(pos === "AD") return "text-orange-400 bg-orange-900/30";
+            if(pos === "Support") return "text-purple-400 bg-purple-900/30";
+            return "text-slate-400 bg-slate-800";
+        }
+        function getWcColor(wc_type) {
+            if(wc_type === "snowball") return "bg-rose-500";
+            if(wc_type === "front-to-back") return "bg-amber-500";
+            if(wc_type === "dive") return "bg-emerald-500";
+            if(wc_type === "split") return "bg-purple-500";
+            if(wc_type === "late") return "bg-sky-500";
+            return "bg-slate-500";
+        }
+        function getWcName(wc_type) {
+            if(wc_type === "snowball") return "Early Snowball";
+            if(wc_type === "front-to-back") return "Front-to-Back";
+            if(wc_type === "dive") return "Dive";
+            if(wc_type === "split") return "Split";
+            if(wc_type === "late") return "Late Game";
+            return "Khác";
+        }
+        function checkMissing(text) {
+            const missingKeywords = ["—", "Chưa có", "Chưa có dữ liệu", "Không nhất quán", "Chưa cập nhật"];
+            if (missingKeywords.some(keyword => text.includes(keyword))) return `<span class="missing-data">${text}</span>`;
+            return text;
+        }
+
+        // Render Draft Board
+        function renderDraft() {
+            const tbody = document.getElementById('draft-body');
+            const search = document.getElementById('search-hero').value.toLowerCase();
+            const pos = document.getElementById('filter-pos').value;
+            const tier = document.getElementById('filter-tier').value;
+            const filtered = draftData.filter(d => 
+                (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
+                (!pos || d.pos === pos) && (!tier || d.tier === tier)
+            );
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="14" class="text-center p-8 text-slate-500">Không tìm thấy tướng phù hợp.</td></tr>`; return; }
+            tbody.innerHTML = filtered.map(d => `
+                <tr class="hover:bg-slate-800 transition">
+                    <td class="table-cell"><span class="px-2 py-1 rounded text-xs font-bold ${getPosColor(d.pos)}">${d.pos}</span></td>
+                    <td class="table-cell font-bold text-white">${d.hero}</td>
+                    <td class="table-cell ${getTierClass(d.tier)} font-bold text-lg heading">${d.tier}</td>
+                    <td class="table-cell text-xs"><span class="block">Ban: ${d.ban}</span><span class="block text-slate-400">Pick: ${d.pick}</span></td>
+                    <td class="table-cell text-xs">${d.fp}</td>
+                    <td class="table-cell text-xs text-cyan-400 font-semibold">${d.flex}</td>
+                    <td class="table-cell text-xs text-slate-300">${d.spike}</td>
+                    <td class="table-cell text-xs font-semibold text-slate-200">${d.counter}</td>
+                    <td class="table-cell text-xs text-purple-300">${d.sync}</td>
+                    <td class="table-cell text-xs">${d.use}</td>
+                    <td class="table-cell text-xs text-rose-300">${d.bancond}</td>
+                    <td class="table-cell text-xs"><span class="px-2 py-1 rounded text-xs font-bold ${getWcColor(d.wc_type).replace('bg-', 'text-').replace('-500', '-400')} bg-slate-700/50">${d.wincond}</span></td>
+                    <td class="table-cell text-xs"><span class="block text-white">${checkMissing(d.wr)}</span><span class="text-slate-400">(${checkMissing(d.presence)})</span></td>
+                    <td class="table-cell text-xs text-slate-400">${checkMissing(d.source)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // --- DRAFT SIMULATOR LOGIC ---
+        let simSelectedHero = null;
+        let simStep = 0;
+        const simState = { blue: { ban: [null, null, null, null], pick: [null, null, null, null, null] }, red: { ban: [null, null, null, null], pick: [null, null, null, null, null] } };
+        const draftSteps = [
+            { team: 'blue', type: 'ban', index: 0, label: 'Blue Ban 1' }, { team: 'red', type: 'ban', index: 0, label: 'Red Ban 1' },
+            { team: 'blue', type: 'ban', index: 1, label: 'Blue Ban 2' }, { team: 'red', type: 'ban', index: 1, label: 'Red Ban 2' },
+            { team: 'blue', type: 'pick', index: 0, label: 'Blue Pick 1' }, { team: 'red', type: 'pick', index: 0, label: 'Red Pick 1' },
+            { team: 'red', type: 'pick', index: 1, label: 'Red Pick 2' }, { team: 'blue', type: 'pick', index: 1, label: 'Blue Pick 2' },
+            { team: 'blue', type: 'pick', index: 2, label: 'Blue Pick 3' }, { team: 'red', type: 'pick', index: 2, label: 'Red Pick 3' },
+            { team: 'blue', type: 'ban', index: 2, label: 'Blue Ban 3' }, { team: 'red', type: 'ban', index: 2, label: 'Red Ban 3' },
+            { team: 'blue', type: 'ban', index: 3, label: 'Blue Ban 4' }, { team: 'red', type: 'ban', index: 3, label: 'Red Ban 4' },
+            { team: 'red', type: 'pick', index: 3, label: 'Red Pick 4' }, { team: 'blue', type: 'pick', index: 3, label: 'Blue Pick 4' },
+            { team: 'red', type: 'pick', index: 4, label: 'Red Pick 5' }, { team: 'blue', type: 'pick', index: 4, label: 'Blue Pick 5' }
+        ];
+
+        function renderSimPool() {
+            const poolDiv = document.getElementById('sim-hero-pool');
+            const search = document.getElementById('sim-search').value.toLowerCase();
+            const fPos = document.getElementById('sim-filter-pos').value;
+            const fClass = document.getElementById('sim-filter-class').value;
+            const usedHeroes = [...simState.blue.ban, ...simState.blue.pick, ...simState.red.ban, ...simState.red.pick];
+            const filteredHeroes = allHeroes.filter(h => 
+                (h.name.toLowerCase().includes(search) || h.class.toLowerCase().includes(search)) &&
+                (!fPos || h.pos === fPos) && (!fClass || h.class === fClass)
+            );
+            if(filteredHeroes.length === 0) { poolDiv.innerHTML = `<div class="col-span-5 text-center text-slate-500 text-xs py-4">Không tìm thấy tướng.</div>`; return; }
+            poolDiv.innerHTML = filteredHeroes.map(h => {
+                const isBanned = simState.blue.ban.includes(h.name) || simState.red.ban.includes(h.name);
+                const isPicked = simState.blue.pick.includes(h.name) || simState.red.pick.includes(h.name);
+                const statusClass = isBanned ? 'banned' : (isPicked ? 'selected' : '');
+                return `<button onclick="selectSimHero('${h.name}')" class="sim-hero-btn p-2 rounded text-center text-xs ${statusClass}">
+                    <div class="font-bold text-white truncate">${h.name}</div>
+                    <div class="text-slate-500 text-[10px]">${h.pos} - ${h.class}</div>
+                </button>`;
+            }).join('');
+        }
+
+        function selectSimHero(heroName) {
+            simSelectedHero = heroName;
+            const heroData = allHeroes.find(h => h.name === heroName);
+            document.getElementById('sim-selected-hero').innerText = heroName;
+            document.getElementById('sim-hero-meta').innerText = `Spike: ${heroData.spike} | Flex: ${heroData.flex} | WC: ${getWcName(heroData.wc)}`;
+            document.getElementById('sim-action-panel').classList.remove('hidden');
+            document.getElementById('sim-action-panel').classList.add('flex');
+            document.getElementById('sim-idle-panel').classList.add('hidden');
+        }
+
+        function cancelSimSelect() {
+            simSelectedHero = null;
+            document.getElementById('sim-action-panel').classList.add('hidden');
+            document.getElementById('sim-action-panel').classList.remove('flex');
+            document.getElementById('sim-idle-panel').classList.remove('hidden');
+        }
+
+        function confirmSimAction() {
+            if(!simSelectedHero) return;
+            const step = draftSteps[simStep];
+            simState[step.team][step.type][step.index] = simSelectedHero;
+            if(step.type === 'pick') { updateCounterInfo(simSelectedHero); }
+            updateSimUI();
+            simStep++;
+            cancelSimSelect();
+            renderSimPool();
+            renderAdvice();
+            
+            if(simStep >= draftSteps.length) {
+                document.getElementById('sim-action-panel').classList.add('hidden');
+                document.getElementById('sim-action-panel').classList.remove('flex');
+                document.getElementById('sim-finish-panel').classList.remove('hidden');
+                document.getElementById('sim-post-draft').classList.remove('hidden');
+                renderTeamMatrix();
+            } else {
+                const nextStep = draftSteps[simStep];
+                document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${nextStep.label}`;
+            }
+        }
+
+        function updateSimUI() {
+            ['blue', 'red'].forEach(team => {
+                ['ban', 'pick'].forEach(type => {
+                    const count = type === 'ban' ? 4 : 5;
+                    for(let i=0; i<count; i++) {
+                        const slotId = `${team}-${type}-${i+1}`;
+                        const slotDiv = document.getElementById(slotId);
+                        if(slotDiv) {
+                            slotDiv.classList.remove('active');
+                            const hero = simState[team][type][i];
+                            if(hero) {
+                                slotDiv.innerHTML = `<span class="font-bold text-white text-xs">${hero}</span>`;
+                                slotDiv.classList.add('filled');
+                            } else {
+                                slotDiv.innerHTML = `${type === 'ban' ? 'B' : 'P'}${i+1}`;
+                                slotDiv.classList.remove('filled');
+                            }
+                        }
+                    }
+                });
+            });
+            if(simStep < draftSteps.length) {
+                const step = draftSteps[simStep];
+                const activeSlotId = `${step.team}-${step.type}-${step.index + 1}`;
+                document.getElementById(activeSlotId)?.classList.add('active');
+            }
+        }
+
+        function updateCounterInfo(heroName) {
+            const heroData = allHeroes.find(h => h.name === heroName);
+            if(heroData && heroData.counter) {
+                document.getElementById('sim-counter-info').innerHTML = `
+                    <div class="text-rose-400 font-bold mb-1">Để counter ${heroName}:</div>
+                    <div class="text-emerald-400 font-semibold">${heroData.counter}</div>
+                    <div class="text-slate-400 text-xs mt-2 italic">Hãy chuẩn bị để pick hoặc ban các tướng này!</div>`;
+            }
+        }
+
+        // --- AI COACH LOGIC ---
+        function tierRank(tier) {
+            const order = { "S+": 0, "S": 1, "A+": 2, "A": 3, "B": 4, "C": 5, "D": 6 };
+            return order[tier] !== undefined ? order[tier] : 7;
+        }
+
+        function getUnavailableHeroes() {
+            return [...simState.blue.ban, ...simState.blue.pick, ...simState.red.ban, ...simState.red.pick].filter(h => h);
+        }
+
+        function getAvailableDraftPool() {
+            const unavailable = getUnavailableHeroes();
+            return draftData.filter(d => !unavailable.includes(d.hero)).sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
+        }
+
+        function getOpenPositions(team) {
+            const allPos = ["Caesar", "Jungle", "Mid", "AD", "Support"];
+            const filledPos = simState[team].pick.filter(h => h).map(h => {
+                const hero = allHeroes.find(x => x.name === h);
+                return hero ? hero.pos : null;
+            });
+            return allPos.filter(p => !filledPos.includes(p));
+        }
+
+        function describeSuggestions(list, limit = 3) {
+            return list.slice(0, limit).map(d => `${d.hero} (${d.tier})`).join(', ');
+        }
+
+        function renderAdvice() {
+            const adviceBox = document.getElementById('sim-advice-box');
+            if(simStep >= draftSteps.length) {
+                adviceBox.innerHTML = `<div class="text-amber-400 font-bold text-lg mb-2 heading">Đội hình hoàn tất!</div>
+                <div class="text-slate-300 text-sm">Hãy kiểm tra Win Condition Matrix và Advanced Checklist bên dưới để đảm bảo đội hình không thiếu công cụ Engage, Peel hay DPS nhé.</div>`;
+                return;
+            }
+            const step = draftSteps[simStep];
+            const opponent = step.team === 'blue' ? 'red' : 'blue';
+            const myTeam = step.team;
+            const oppPicks = simState[opponent].pick.filter(h => h !== null);
+            const myPicks = simState[myTeam].pick.filter(h => h !== null);
+            const available = getAvailableDraftPool();
+            const myOpenPos = getOpenPositions(myTeam);
+            const oppOpenPos = getOpenPositions(opponent);
+
+            let adviceTitle = `<div class="text-amber-400 font-bold text-lg mb-1 heading">Gợi ý Lượt: ${step.label}</div>`;
+            let context = "", action = "", reason = "";
+
+            if (step.type === 'ban') {
+                if (oppPicks.length > 0) {
+                    const lastPickName = oppPicks[oppPicks.length - 1];
+                    const lastMeta = draftData.find(d => d.hero === lastPickName);
+                    const heroData = allHeroes.find(h => h.name === lastPickName);
+                    context = `<span class="text-slate-300">Đối phương vừa Pick <b class="text-rose-400">${lastPickName}</b> (${heroData.class}${lastMeta ? `, Tier ${lastMeta.tier}` : ''}).</span>`;
+
+                    const counterNames = lastMeta ? lastMeta.counter.split(' / ').map(s => s.trim()) : [];
+                    const availableCounters = available.filter(d => counterNames.includes(d.hero));
+                    const topThreats = available.filter(d => tierRank(d.tier) <= 1 && d.hero !== lastPickName).slice(0, 3);
+
+                    if (availableCounters.length > 0) {
+                        action = `Ban trực tiếp counter của ${lastPickName}: <b class="text-emerald-400">${describeSuggestions(availableCounters)}</b>.`;
+                        reason = `Đây là những tướng khắc chế trực tiếp ${lastPickName} vẫn còn trống — cấm sẽ buộc đối phương phải xoay hướng draft.`;
+                    } else if (topThreats.length > 0) {
+                        action = `Không còn counter trực tiếp trống, nên Ban các mối đe dọa top-tier khác: <b class="text-emerald-400">${describeSuggestions(topThreats)}</b>.`;
+                        reason = `Đối phương vẫn còn vị trí ${oppOpenPos.join(', ') || '—'} chưa lấy — ưu tiên cấm tướng S+/S mạnh nhất để hạn chế lựa chọn của họ.`;
+                    } else {
+                        action = "Ban theo tướng tủ của player đối phương hoặc tướng flex còn lại.";
+                        reason = "Pool top-tier đã cạn, hãy dựa vào scouting player thay vì tier chung.";
+                    }
+                } else {
+                    const topBans = available.slice(0, 3);
+                    context = `<span class="text-slate-300">Giai đoạn Cấm đầu trận (Phase 1).</span>`;
+                    action = topBans.length > 0
+                        ? `Ưu tiên Deny First Pick hoặc Target Ban vào: <b class="text-emerald-400">${describeSuggestions(topBans)}</b>.`
+                        : "Ưu tiên Deny First Pick hoặc Target Ban.";
+                    reason = "Chưa có đội hình để đọc vị, hãy cấm các tướng S+ có Threat cao nhất hiện còn hoặc tướng tủ của player đối phương.";
+                }
+            } else {
+                if (myPicks.length === 0) {
+                    const flexPicks = available.filter(d => d.flex && d.flex !== '—').slice(0, 3);
+                    context = `<span class="text-slate-300">Đây là First Pick của bạn.</span>`;
+                    action = flexPicks.length > 0
+                        ? `Chọn tướng Tier cao có khả năng Flex: <b class="text-emerald-400">${describeSuggestions(flexPicks)}</b>.`
+                        : "Chọn tướng Tier S+ hoặc có Khả năng Flex (Đổi vị trí).";
+                    reason = "Chọn tướng linh hoạt sẽ làm khó đối phương không biết đường để Counter ở lượt Ban tiếp theo.";
+                } else {
+                    const myWc = myPicks.map(p => { const d = draftData.find(x => x.hero === p); return d ? d.wc_type : null; }).filter(Boolean);
+                    const mismatchWarning = (myWc.includes('snowball') && myWc.includes('late'))
+                        ? `<div class="mt-2 text-rose-400 text-xs font-bold">⚠️ Đội hình đang lẫn cả Early Snowball và Late Game — cân nhắc ưu tiên 1 hướng thắng rõ ràng.</div>` : '';
+
+                    const posPriority = myOpenPos[0];
+                    const posCandidates = available.filter(d => d.pos === posPriority).slice(0, 3);
+                    const lastPick = myPicks[myPicks.length - 1];
+                    const heroData = allHeroes.find(h => h.name === lastPick);
+                    context = `<span class="text-slate-300">Đội bạn vừa Pick <b class="text-blue-400">${lastPick}</b> (${heroData.class}). Vị trí còn trống: <b class="text-cyan-400">${myOpenPos.join(', ') || 'Đã đủ 5 vị trí'}</b>.</span>`;
+
+                    if (myPicks.length < 3) {
+                        action = posCandidates.length > 0
+                            ? `Ưu tiên lấp vị trí ${posPriority}: <b class="text-emerald-400">${describeSuggestions(posCandidates)}</b>.`
+                            : `Bổ sung Tuyến trước (Đỡ đòn) hoặc Trợ thủ (Engage/Peel) cho vị trí ${posPriority}.`;
+                        reason = "Cần khung đội hình vững trước khi dồn hết vào sát thương, tránh bị đối phương Counter tỷ lệ số người." + mismatchWarning;
+                    } else {
+                        const oppLastPick = oppPicks.length > 0 ? oppPicks[oppPicks.length - 1] : null;
+                        const oppThreat = oppLastPick ? draftData.find(d => d.hero === oppLastPick) : null;
+                        const oppCounters = oppThreat ? available.filter(d => oppThreat.counter.split(' / ').map(s => s.trim()).includes(d.hero)) : [];
+                        const finalCandidates = oppCounters.length > 0 ? oppCounters : posCandidates;
+                        context += ` <span class="text-slate-300">Giai đoạn hoàn thiện đội hình (Lượt ${myPicks.length + 1}/5).</span>`;
+                        action = finalCandidates.length > 0
+                            ? `Pick counter đội hình đối phương hoặc lấp vị trí ${posPriority}: <b class="text-emerald-400">${describeSuggestions(finalCandidates)}</b>.`
+                            : "Pick Counter trực tiếp đội hình đối phương hoặc lấp khoảng trống cuối cùng.";
+                        reason = `Đối phương còn thiếu vị trí: ${oppOpenPos.join(', ') || 'không còn trống'}. Ưu tiên khóa mục tiêu chủ lực của họ hoặc lấp vị trí còn thiếu của đội mình.` + mismatchWarning;
+                    }
+                }
+            }
+            adviceBox.innerHTML = `${adviceTitle}
+                <div class="text-sm text-slate-400 mb-2">${context}</div>
+                <div class="bg-slate-900 p-4 rounded border-l-4 border-amber-500 text-sm text-slate-200">
+                    <div class="mb-2"><b class="text-amber-400">Hành động:</b> ${action}</div>
+                    <div><b class="text-amber-400">Vì sao?</b> ${reason}</div>
+                </div>`;
+        }
+
+        // --- WIN CONDITION MATRIX LOGIC ---
+        function renderTeamMatrix() {
+            const bluePicks = simState.blue.pick.filter(h => h);
+            const redPicks = simState.red.pick.filter(h => h);
+            
+            const calcWc = (picks) => {
+                const counts = { snowball: 0, 'front-to-back': 0, dive: 0, split: 0, late: 0 };
+                picks.forEach(p => {
+                    const h = allHeroes.find(h => h.name === p);
+                    if(h && counts[h.wc] !== undefined) counts[h.wc]++;
+                });
+                const total = picks.length || 1;
+                return Object.keys(counts).map(k => ({ name: k, val: (counts[k] / total) * 100 }));
+            };
+
+            const blueWc = calcWc(bluePicks);
+            const redWc = calcWc(redPicks);
+
+            const drawTeamWc = (teamName, wcData, picks) => {
+                let mismatch = picks.length === 5 && wcData.some(w => w.name === 'snowball' && w.val > 0) && wcData.some(w => w.name === 'late' && w.val > 0);
+                
+                let html = `<h4 class="font-bold text-lg mb-3 ${teamName === 'Blue' ? 'text-blue-400' : 'text-rose-400'}">${teamName} Team</h4>`;
+                if(mismatch) {
+                    html += `<div class="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs p-2 rounded mb-3 font-bold">⚠️ Lỗi định hướng đội hình (Comp Mismatch): Có cả Snowball và Late Game!</div>`;
+                }
+                html += `<div class="space-y-2">`;
+                wcData.forEach(w => {
+                    html += `
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300">${getWcName(w.name)}</span>
+                                <span class="text-slate-400">${w.val.toFixed(0)}%</span>
+                            </div>
+                            <div class="wc-bar-bg">
+                                <div class="wc-bar-fill ${getWcColor(w.name)}" style="width: ${w.val}%"></div>
+                            </div>
+                        </div>`;
+                });
+                html += `</div>`;
+                return html;
+            };
+
+            document.getElementById('wc-blue-team').innerHTML = drawTeamWc('Blue', blueWc, bluePicks);
+            document.getElementById('wc-red-team').innerHTML = drawTeamWc('Red', redWc, redPicks);
+        }
+
+        function resetSimulator() {
+            simStep = 0;
+            simState.blue = { ban: [null, null, null, null], pick: [null, null, null, null, null] };
+            simState.red = { ban: [null, null, null, null], pick: [null, null, null, null, null] };
+            document.getElementById('sim-finish-panel').classList.add('hidden');
+            document.getElementById('sim-post-draft').classList.add('hidden');
+            document.getElementById('sim-next-step').innerText = `Bắt đầu: ${draftSteps[0].label}`;
+            document.getElementById('sim-counter-info').innerHTML = `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`;
+            updateSimUI();
+            renderSimPool();
+            renderAdvice();
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId + '-tab').classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('tab-active'));
+            btn.classList.add('tab-active');
+        }
+
+        // Init
+        document.getElementById('search-hero').addEventListener('input', renderDraft);
+        document.getElementById('filter-pos').addEventListener('change', renderDraft);
+        document.getElementById('filter-tier').addEventListener('change', renderDraft);
+        document.getElementById('sim-search').addEventListener('input', renderSimPool);
+        document.getElementById('sim-filter-pos').addEventListener('change', renderSimPool);
+        document.getElementById('sim-filter-class').addEventListener('change', renderSimPool);
+
+        renderDraft();
+        renderSimPool();
+        updateSimUI();
+        renderAdvice();
+    </script>
+</body>
+</html>
