@@ -1521,6 +1521,25 @@
             el.classList.remove('hidden');
         }
 
+        // --- DÒNG QUYẾT ĐỊNH ---
+        // Draft chỉ có 40s và coach thường cầm điện thoại: phải thấy NGAY nên làm gì, phần phân tích
+        // gấp lại cho ai muốn đọc. Trước đây toàn bộ lý giải đổ thẳng ra màn hình nên không kịp đọc.
+        function bigHeroChip(d) {
+            return `<button onclick="selectSimHero('${jsEscape(d.hero)}')" class="text-lg font-bold text-emerald-300 hover:text-emerald-200 underline decoration-emerald-500/40 underline-offset-4">${d.hero}</button><span class="${getTierClass(d.tier)} text-xs font-bold ml-1">${d.tier}</span>`;
+        }
+        function buildHeadline(verb, d, why, alts, alert) {
+            const verbCls = verb === 'CẤM' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-slate-900';
+            return `<div class="bg-slate-900 rounded-lg border-l-4 ${verb === 'CẤM' ? 'border-rose-500' : 'border-emerald-500'} p-3 mb-2">
+                ${alert ? `<div class="text-[11px] font-bold text-amber-300 mb-1.5">${alert}</div>` : ''}
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[10px] font-bold ${verbCls} rounded px-1.5 py-0.5 heading">${verb}</span>
+                    ${bigHeroChip(d)}
+                </div>
+                <div class="text-xs text-slate-300 mt-1.5 leading-snug">${why}</div>
+                ${alts && alts.length ? `<div class="text-[11px] text-slate-400 mt-1.5">Hoặc: ${alts.map(a => `<button onclick="selectSimHero('${jsEscape(a.hero)}')" class="text-slate-300 hover:text-white underline decoration-slate-600 mr-2">${a.hero} (${a.tier})</button>`).join('')}</div>` : ''}
+            </div>`;
+        }
+
         function renderAdvice() {
             const adviceBox = document.getElementById('sim-advice-box');
             const blueSlot = document.getElementById('blue-advice');
@@ -1548,7 +1567,7 @@
             const oppOpenPos = getOpenPositions(opponent);
 
             let adviceTitle = `<div class="text-amber-400 font-bold text-lg mb-1 heading">Gợi ý Lượt: ${step.label}</div>`;
-            let context = "", action = "", reason = "";
+            let context = "", action = "", reason = "", headline = "";
 
             if (step.type === 'ban') {
                 if (oppPicks.length > 0) {
@@ -1566,6 +1585,12 @@
                     }
                     sections.push(renderDepthLine(buildPositionDepth(available, oppOpenPos)));
                     if (rankedBans.length > 0) {
+                        const t = rankedBans[0];
+                        const why = !t.alt ? 'Không còn tướng nào thay được vai này của họ.'
+                            : t.gap >= 8 ? `Thay thế tốt nhất còn lại của họ là ${t.alt.hero} (${t.alt.tier}) — kém hơn rõ rệt.`
+                            : `Cấm xong họ chuyển sang ${t.alt.hero} (${t.alt.tier}), giá trị thấp — cân nhắc cấm chỗ khác.`;
+                        headline = buildHeadline('CẤM', t.d, why, rankedBans.slice(1, 3).map(x => x.d),
+                            forced ? `🔒 Họ bị ép vào ${oppOpenPos.join(' và ')} — cấm đây là chặn thẳng.` : '');
                         sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-2">` +
                             rankedBans.slice(0, 3).map(x => `<div>${banValueBadge(x.gap)} ${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span><div class="text-[11px] ml-1 mt-0.5">↳ ${banValueNote(x)}</div></div>`).join('') +
                             `</div></div>`);
@@ -1601,6 +1626,11 @@
                         sections.push(`<div class="mb-2 text-slate-400">ℹ️ Chưa vị trí nào khan hiếm (mỏng nhất là <b class="text-slate-300">${thinnest.pos}</b> vẫn còn ${thinnest.count} lựa chọn mạnh) — cấm lúc này khó siết được pool, tướng nào cấm đi họ cũng có con ngang cơ thay thế. Đây là lượt để <b class="text-slate-300">deny First Pick / cấm tướng threat</b>, còn giá trị cấm thật sự sẽ rõ ở Ban 3-4.</div>`);
                     }
                     if (rankedBans.length > 0) {
+                        const t = rankedBans[0];
+                        headline = buildHeadline('CẤM', t.d,
+                            t.minLeft <= 2 ? `Siết ${t.d.pos} nhanh nhất — cấm xong họ chỉ còn ${t.minLeft} tướng chuyên lane.`
+                                           : `Chưa vị trí nào khan hiếm — cấm theo threat, giá trị siết pool sẽ rõ ở Ban 3-4.`,
+                            rankedBans.slice(1, 3).map(x => x.d), '');
                         sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-2">` +
                             rankedBans.slice(0, 3).map((x, i) => {
                                 const detail = x.after.map(a => a.viaFlex
@@ -1646,6 +1676,10 @@
                 // Bảng xếp hạng gợi ý tổng hợp
                 const topPicks = ranked.filter(x => x.score > 0).slice(0, 3);
                 if (topPicks.length > 0) {
+                    const t = topPicks[0];
+                    const urgent = renderScarcityWarning(available, myOpenPos, myPicksLeft) ? myOpenPos : [];
+                    headline = buildHeadline('PICK', t.d, t.reasons.slice(0, 2).join(', ') + '.', topPicks.slice(1, 3).map(x => x.d),
+                        hasLastPick && oppPicks.length > 0 ? '👑 Last Pick — hard-counter thẳng, không cần giấu bài.' : '');
                     sections.push(`<div class="mb-2"><b class="text-amber-300">⭐ Lựa chọn tối ưu:</b><div class="mt-1 space-y-1">` +
                         topPicks.map(x => `<div>${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span></div>`).join('') +
                         `</div></div>`);
@@ -1662,11 +1696,15 @@
             const targetSlot = myTeam === 'blue' ? blueSlot : redSlot;
             targetSlot.classList.remove('hidden');
             targetSlot.innerHTML = `${adviceTitle}
-                <div class="text-xs text-slate-400 mb-2">${context}</div>
-                <div class="bg-slate-900 p-3 rounded border-l-4 border-amber-500 text-xs text-slate-200">
-                    <div class="mb-2"><b class="text-amber-400">Hành động:</b> ${action}</div>
-                    <div><b class="text-amber-400">Vì sao?</b> ${reason}</div>
-                </div>`;
+                ${headline}
+                <details class="text-xs">
+                    <summary class="cursor-pointer text-slate-400 hover:text-amber-400 select-none py-1">▸ Xem phân tích đầy đủ</summary>
+                    <div class="text-xs text-slate-400 my-2">${context}</div>
+                    <div class="bg-slate-900 p-3 rounded border-l-4 border-amber-500 text-xs text-slate-200">
+                        <div class="mb-2"><b class="text-amber-400">Hành động:</b> ${action}</div>
+                        <div><b class="text-amber-400">Vì sao?</b> ${reason}</div>
+                    </div>
+                </details>`;
         }
 
         // --- WIN CONDITION MATRIX LOGIC ---
