@@ -350,9 +350,16 @@
                             <button onclick="confirmSimAction()" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700">Xác nhận</button>
                             <button onclick="cancelSimSelect()" class="bg-slate-700 text-slate-300 px-3 py-2 rounded text-sm">Hủy chọn</button>
                         </div>
-                        <div id="sim-idle-panel" class="text-center">
+                        <div id="sim-idle-panel" class="text-center w-full">
                             <div class="text-amber-400 font-bold mb-1 text-lg" id="sim-next-step">Bắt đầu: Blue Ban 1</div>
-                            <div class="text-sm text-slate-400">👆 Click vào một tướng ở Hero Pool để tiến hành cấm/chọn theo quy trình Pro.</div>
+                            <!-- Mirror của #sim-counter-info (thẻ Hero Pool) ngay tại đây, để đọc gợi ý counter/combo
+                                 lúc đang đứng ở panel dưới cùng chờ lượt kế, khỏi phải lướt lên Hero Pool. -->
+                            <div class="text-left text-sm mt-1">
+                                <div id="sim-idle-counter-title" class="text-amber-400 font-bold heading mb-1 text-xs">Gợi ý Đối Phương (Counter)</div>
+                                <div id="sim-idle-counter-info" class="text-slate-300 text-xs">
+                                    <span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>
+                                </div>
+                            </div>
                         </div>
                         <div id="sim-finish-panel" class="hidden text-emerald-400 font-bold text-xl text-center">🎉 DRAFT HOÀN TẤT! Chúc may mắn.</div>
                     </div>
@@ -987,8 +994,7 @@
             if (lastPick) {
                 updateCounterInfo(lastPick.hero, lastPick.team, lastPick.stepIndex);
             } else {
-                document.getElementById('sim-counter-title').innerText = 'Gợi ý Đối Phương (Counter)';
-                document.getElementById('sim-counter-info').innerHTML = `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`;
+                setCounterPanel('Gợi ý Đối Phương (Counter)', `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`);
             }
         }
 
@@ -1077,11 +1083,19 @@
             }
         }
 
+        function setCounterPanel(title, html) {
+            document.getElementById('sim-counter-title').innerText = title;
+            document.getElementById('sim-counter-info').innerHTML = html;
+            // Mirror lên panel dưới cùng (sim-idle-panel) để đọc được ngay, khỏi lướt lên Hero Pool.
+            const idleTitle = document.getElementById('sim-idle-counter-title');
+            const idleInfo = document.getElementById('sim-idle-counter-info');
+            if (idleTitle) idleTitle.innerText = title;
+            if (idleInfo) idleInfo.innerHTML = html;
+        }
+
         function updateCounterInfo(heroName, pickedByTeam, atStepIndex) {
             const heroData = allHeroes.find(h => h.name === heroName);
             if (!heroData) return;
-            const titleEl = document.getElementById('sim-counter-title');
-            const infoEl = document.getElementById('sim-counter-info');
 
             // Lượt kế tiếp so với lượt vừa pick (atStepIndex), dùng được cả khi dựng lại sau Hoàn tác
             const nextStep = draftSteps[atStepIndex + 1];
@@ -1090,14 +1104,13 @@
 
             if (sameTeamPicksNext) {
                 // Đội mình vừa pick và sắp pick tiếp -> gợi ý Phối hợp thay vì Counter (pick trước đó không phải của đối phương)
-                titleEl.innerText = 'Gợi ý Phối Hợp (Combo)';
                 const meta = draftData.find(d => d.hero === heroName);
                 const syncText = meta && meta.sync && meta.sync !== '—' ? meta.sync : null;
-                infoEl.innerHTML = syncText
+                setCounterPanel('Gợi ý Phối Hợp (Combo)', syncText
                     ? `<div class="text-emerald-400 font-bold mb-1">Phối hợp tốt với ${heroName}:</div>
                        <div class="text-cyan-400 font-semibold">${syncText}</div>
                        <div class="text-slate-400 text-xs mt-2 italic">Đội bạn pick tiếp ngay sau đây — ưu tiên tướng ăn ý để dựng combo!</div>`
-                    : `<div class="text-slate-400 text-xs italic">Đội bạn pick tiếp ngay sau đây — ${heroName} chưa có dữ liệu phối hợp cụ thể, hãy ưu tiên lấp vị trí còn thiếu.</div>`;
+                    : `<div class="text-slate-400 text-xs italic">Đội bạn pick tiếp ngay sau đây — ${heroName} chưa có dữ liệu phối hợp cụ thể, hãy ưu tiên lấp vị trí còn thiếu.</div>`);
                 return;
             }
 
@@ -1114,15 +1127,14 @@
             if (nextStep.type === 'ban') {
                 // Lượt sau là cấm, không phải pick -> "counter" không dùng được ở đây. Thứ có thể hành
                 // động ngay là phá combo: cấm những tướng ăn ý với con vừa pick trước khi họ ráp đủ.
-                titleEl.innerText = 'Gợi ý Lượt Cấm Tiếp Theo';
                 const meta = draftData.find(d => d.hero === heroName);
                 const syncNames = meta && meta.sync && meta.sync !== '—' ? meta.sync.split(',').map(s => s.trim()) : [];
                 const comboTargets = getAvailableDraftPool().filter(d => syncNames.includes(d.hero));
-                infoEl.innerHTML = comboTargets.length > 0
+                setCounterPanel('Gợi ý Lượt Cấm Tiếp Theo', comboTargets.length > 0
                     ? `<div class="text-rose-400 font-bold mb-1">Phá combo của ${heroName}:</div>
                        <div class="text-emerald-400 font-semibold">${comboTargets.map(d => `${d.hero} (${d.tier})`).join(', ')}</div>
                        <div class="text-slate-400 text-xs mt-2 italic">Đây là tướng ăn ý với ${heroName} — cấm để họ không ráp được combo.</div>`
-                    : `<div class="text-slate-400 text-xs italic">${heroName} chưa có dữ liệu phối hợp cụ thể để nhắm cấm phá combo.</div>`;
+                    : `<div class="text-slate-400 text-xs italic">${heroName} chưa có dữ liệu phối hợp cụ thể để nhắm cấm phá combo.</div>`);
                 return;
             }
 
@@ -1131,11 +1143,10 @@
                 const counterNames = heroData.counter.split(' / ').map(s => s.trim());
                 const live = available.filter(d => counterNames.includes(d.hero));
                 if (live.length > 0) {
-                    titleEl.innerText = 'Gợi ý Đối Phương (Counter)';
-                    infoEl.innerHTML = `
+                    setCounterPanel('Gợi ý Đối Phương (Counter)', `
                         <div class="text-rose-400 font-bold mb-1">Để counter ${heroName}:</div>
                         <div class="text-emerald-400 font-semibold">${live.map(d => `${d.hero} (${d.tier})`).join(', ')}</div>
-                        <div class="text-slate-400 text-xs mt-2 italic">Hãy chuẩn bị để pick hoặc ban các tướng này!</div>`;
+                        <div class="text-slate-400 text-xs mt-2 italic">Hãy chuẩn bị để pick hoặc ban các tướng này!</div>`);
                     return;
                 }
             }
@@ -1143,19 +1154,18 @@
             // Vị trí của heroName đã đủ người ở đội sắp pick, hoặc mọi tướng khắc chế đều đã hết —
             // counter trực tiếp là lời khuyên chết. Đổi sang đúng bộ máy chấm điểm dùng cho Gợi ý Lượt
             // (lấp vị trí trống + đối lane/khắc chế + bù nhu cầu đội hình), để hai nơi không mâu thuẫn nhau.
-            titleEl.innerText = 'Gợi ý Theo Nhu Cầu Đội Hình';
             const usPicks = simState[us].pick.filter(h => h);
             const themPicks = simState[pickedByTeam].pick.filter(h => h);
             const ranked = buildRankedPicks(available, usPicks, themPicks, usOpenPos).filter(x => x.score > 0);
             const reasonNoDirect = servesOpenPos
                 ? `Các tướng khắc chế ${heroName} đều đã bị cấm/lấy.`
                 : `${heroData.pos} bên bạn đã đủ người — dù ${heroName} có tướng khắc chế, bạn cũng không còn chỗ để dùng.`;
-            infoEl.innerHTML = ranked.length > 0
+            setCounterPanel('Gợi ý Theo Nhu Cầu Đội Hình', ranked.length > 0
                 ? `<div class="text-amber-300 font-bold mb-1">${reasonNoDirect}</div>
                    <div class="space-y-1">${ranked.slice(0, 2).map(x => `<div><span class="text-emerald-400 font-semibold">${x.d.hero} (${x.d.tier})</span> <span class="text-slate-400 text-xs">— ${x.reasons.join(', ')}</span></div>`).join('')}</div>
                    <div class="text-slate-400 text-xs mt-2 italic">Ưu tiên theo vị trí còn trống + nhu cầu đội hình, không riêng việc khắc chế ${heroName}.</div>`
                 : `<div class="text-amber-300 font-bold mb-1">${reasonNoDirect}</div>
-                   <div class="text-slate-400 text-xs italic mt-1">Chưa có gợi ý phù hợp cho các vị trí còn lại — tự cân nhắc theo tình huống thực tế.</div>`;
+                   <div class="text-slate-400 text-xs italic mt-1">Chưa có gợi ý phù hợp cho các vị trí còn lại — tự cân nhắc theo tình huống thực tế.</div>`);
         }
 
         // --- AI COACH LOGIC ---
