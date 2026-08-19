@@ -195,44 +195,47 @@
 
                 <!-- Hero Pool & Info -->
                 <div class="bg-slate-800/50 p-4 rounded-lg shadow-xl border border-slate-700">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex justify-between items-center">
                         <h3 class="text-xl font-bold text-amber-400 heading">Hero Pool</h3>
                         <button onclick="resetSimulator()" class="text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded hover:bg-rose-500/30 transition">Reset</button>
                     </div>
-                    
-                    <div class="flex flex-col gap-2 mb-4">
-                        <input type="text" id="sim-search" placeholder="Tìm tướng..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
-                        <div class="grid grid-cols-2 gap-2">
-                            <select id="sim-filter-pos" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
-                                <option value="">Tất cả Vị trí</option>
-                                <option value="Caesar">Caesar</option>
-                                <option value="Jungle">Jungle</option>
-                                <option value="Mid">Mid</option>
-                                <option value="AD">AD</option>
-                                <option value="Support">Support</option>
-                            </select>
-                            <select id="sim-filter-class" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
-                                <option value="">Tất cả Vai trò</option>
-                                <option value="Đấu sĩ">Đấu sĩ</option>
-                                <option value="Sát thủ">Sát thủ</option>
-                                <option value="Pháp sư">Pháp sư</option>
-                                <option value="Xạ thủ">Xạ thủ</option>
-                                <option value="Trợ thủ">Trợ thủ</option>
-                                <option value="Đỡ đòn">Đỡ đòn</option>
-                            </select>
+                    <!-- Draft xong thì cả khối này không còn việc gì để làm nữa (tướng đã hết hoặc bị cấm hết) —
+                         thu về 1 dòng tiêu đề + Reset để nhường chỗ đọc Win Condition Matrix/Gameplan bên dưới. -->
+                    <div id="sim-pool-body" class="mt-4">
+                        <div class="flex flex-col gap-2 mb-4">
+                            <input type="text" id="sim-search" placeholder="Tìm tướng..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="sim-filter-pos" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                                    <option value="">Tất cả Vị trí</option>
+                                    <option value="Caesar">Caesar</option>
+                                    <option value="Jungle">Jungle</option>
+                                    <option value="Mid">Mid</option>
+                                    <option value="AD">AD</option>
+                                    <option value="Support">Support</option>
+                                </select>
+                                <select id="sim-filter-class" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                                    <option value="">Tất cả Vai trò</option>
+                                    <option value="Đấu sĩ">Đấu sĩ</option>
+                                    <option value="Sát thủ">Sát thủ</option>
+                                    <option value="Pháp sư">Pháp sư</option>
+                                    <option value="Xạ thủ">Xạ thủ</option>
+                                    <option value="Trợ thủ">Trợ thủ</option>
+                                    <option value="Đỡ đòn">Đỡ đòn</option>
+                                </select>
+                            </div>
+                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                                <input type="checkbox" id="sim-meta-only" class="accent-amber-500 w-4 h-4">
+                                <span>Chỉ hiện tướng trong Meta Pool (<span id="sim-pool-count">0</span> tướng)</span>
+                            </label>
                         </div>
-                        <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                            <input type="checkbox" id="sim-meta-only" class="accent-amber-500 w-4 h-4">
-                            <span>Chỉ hiện tướng trong Meta Pool (<span id="sim-pool-count">0</span> tướng)</span>
-                        </label>
-                    </div>
 
-                    <div id="sim-hero-pool" class="grid grid-cols-4 md:grid-cols-5 gap-2 max-h-[300px] overflow-y-auto pr-2"></div>
-                    
-                    <div class="mt-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
-                        <h4 id="sim-counter-title" class="text-amber-400 font-bold heading mb-2 text-sm">Gợi ý Đối Phương (Counter)</h4>
-                        <div id="sim-counter-info" class="text-sm text-slate-300 min-h-[40px]">
-                            <span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>
+                        <div id="sim-hero-pool" class="grid grid-cols-4 md:grid-cols-5 gap-2 max-h-[300px] overflow-y-auto pr-2"></div>
+
+                        <div class="mt-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                            <h4 id="sim-counter-title" class="text-amber-400 font-bold heading mb-2 text-sm">Gợi ý Đối Phương (Counter)</h4>
+                            <div id="sim-counter-info" class="text-sm text-slate-300 min-h-[40px]">
+                                <span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -324,38 +327,47 @@
             </div>
 
             <!-- Simulator Action Menu -->
-            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 sticky bottom-4">
-                <div class="flex flex-wrap items-center justify-center gap-4">
-                    <div id="sim-action-panel" class="hidden flex-wrap gap-3 items-center justify-center">
-                        <div class="text-center md:text-left">
-                            <div class="text-xs text-slate-400">Lượt hiện tại</div>
-                            <div id="sim-current-step" class="font-bold text-amber-400 text-lg">Blue Ban 1</div>
+            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 sticky bottom-4">
+                <!-- Trên điện thoại panel này chiếm chỗ cố định suốt trận. Bấm để thu gọn/mở rộng bất
+                     cứ lúc nào; draft xong sẽ tự thu gọn (Xác nhận/Hoàn tác/đồng hồ hết cần dùng), nhưng
+                     vẫn bấm mở lại được ngay nếu cần Hoàn tác sau đó. -->
+                <button onclick="toggleSimPanel()" class="w-full flex items-center justify-between gap-2 text-left">
+                    <span id="sim-panel-summary" class="text-sm font-bold text-amber-400 truncate">Bắt đầu: Blue Ban 1</span>
+                    <span id="sim-panel-arrow" class="text-slate-400 flex-shrink-0 text-xs">▾ Thu gọn</span>
+                </button>
+                <div id="sim-panel-body" class="mt-3">
+                    <div class="flex flex-wrap items-center justify-center gap-4">
+                        <div id="sim-action-panel" class="hidden flex-wrap gap-3 items-center justify-center">
+                            <div class="text-center md:text-left">
+                                <div class="text-xs text-slate-400">Lượt hiện tại</div>
+                                <div id="sim-current-step" class="font-bold text-amber-400 text-lg">Blue Ban 1</div>
+                            </div>
+                            <div class="text-center md:text-left">
+                                <div class="text-xs text-slate-400">Tướng đã chọn</div>
+                                <div id="sim-selected-hero" class="font-bold text-white text-lg">Chưa chọn</div>
+                                <div id="sim-hero-meta" class="text-xs text-cyan-400"></div>
+                            </div>
+                            <button onclick="confirmSimAction()" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700">Xác nhận</button>
+                            <button onclick="cancelSimSelect()" class="bg-slate-700 text-slate-300 px-3 py-2 rounded text-sm">Hủy chọn</button>
                         </div>
-                        <div class="text-center md:text-left">
-                            <div class="text-xs text-slate-400">Tướng đã chọn</div>
-                            <div id="sim-selected-hero" class="font-bold text-white text-lg">Chưa chọn</div>
-                            <div id="sim-hero-meta" class="text-xs text-cyan-400"></div>
+                        <div id="sim-idle-panel" class="text-center">
+                            <div class="text-amber-400 font-bold mb-1 text-lg" id="sim-next-step">Bắt đầu: Blue Ban 1</div>
+                            <div class="text-sm text-slate-400">👆 Click vào một tướng ở Hero Pool để tiến hành cấm/chọn theo quy trình Pro.</div>
                         </div>
-                        <button onclick="confirmSimAction()" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700">Xác nhận</button>
-                        <button onclick="cancelSimSelect()" class="bg-slate-700 text-slate-300 px-3 py-2 rounded text-sm">Hủy chọn</button>
+                        <div id="sim-finish-panel" class="hidden text-emerald-400 font-bold text-xl text-center">🎉 DRAFT HOÀN TẤT! Chúc may mắn.</div>
                     </div>
-                    <div id="sim-idle-panel" class="text-center">
-                        <div class="text-amber-400 font-bold mb-1 text-lg" id="sim-next-step">Bắt đầu: Blue Ban 1</div>
-                        <div class="text-sm text-slate-400">👆 Click vào một tướng ở Hero Pool để tiến hành cấm/chọn theo quy trình Pro.</div>
-                    </div>
-                    <div id="sim-finish-panel" class="hidden text-emerald-400 font-bold text-xl text-center">🎉 DRAFT HOÀN TẤT! Chúc may mắn.</div>
-                </div>
-                <div id="sim-pick-risk" class="hidden w-full mt-3 text-xs bg-slate-800/60 border border-slate-700 rounded px-3 py-2 leading-relaxed"></div>
-                <div class="flex flex-wrap items-center justify-center gap-3 mt-3 pt-3 border-t border-slate-700">
-                    <button onclick="undoSimAction()" id="sim-undo-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded text-xs font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed" disabled>↩ Hoàn tác</button>
-                    <div class="flex items-center gap-2">
-                        <button onclick="toggleTimer()" id="sim-timer-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded text-xs font-semibold transition">⏱ Bật đồng hồ</button>
-                        <span id="sim-timer-display" class="hidden font-bold text-lg heading tabular-nums text-center" style="min-width:2.5rem">40</span>
-                        <select id="sim-timer-length" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-300">
-                            <option value="30">30s</option>
-                            <option value="40" selected>40s</option>
-                            <option value="50">50s</option>
-                        </select>
+                    <div id="sim-pick-risk" class="hidden w-full mt-3 text-xs bg-slate-800/60 border border-slate-700 rounded px-3 py-2 leading-relaxed"></div>
+                    <div class="flex flex-wrap items-center justify-center gap-3 mt-3 pt-3 border-t border-slate-700">
+                        <button onclick="undoSimAction()" id="sim-undo-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded text-xs font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed" disabled>↩ Hoàn tác</button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleTimer()" id="sim-timer-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-1.5 rounded text-xs font-semibold transition">⏱ Bật đồng hồ</button>
+                            <span id="sim-timer-display" class="hidden font-bold text-lg heading tabular-nums text-center" style="min-width:2.5rem">40</span>
+                            <select id="sim-timer-length" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-300">
+                                <option value="30">30s</option>
+                                <option value="40" selected>40s</option>
+                                <option value="50">50s</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -896,6 +908,8 @@
             document.getElementById('sim-action-panel').classList.add('flex');
             document.getElementById('sim-idle-panel').classList.add('hidden');
             renderSelectionRisk(heroName);
+            if (simPanelCollapsed) { simPanelCollapsed = false; applySimPanelCollapse(); }
+            updateSimPanelSummary();
         }
 
         function cancelSimSelect() {
@@ -904,6 +918,7 @@
             document.getElementById('sim-action-panel').classList.remove('flex');
             document.getElementById('sim-idle-panel').classList.remove('hidden');
             document.getElementById('sim-pick-risk').classList.add('hidden');
+            updateSimPanelSummary();
         }
 
         function confirmSimAction() {
@@ -923,14 +938,18 @@
             if(simStep >= draftSteps.length) {
                 document.getElementById('sim-action-panel').classList.add('hidden');
                 document.getElementById('sim-action-panel').classList.remove('flex');
+                document.getElementById('sim-idle-panel').classList.add('hidden'); // trước đây đứng lẫn với sim-finish-panel
                 document.getElementById('sim-finish-panel').classList.remove('hidden');
                 document.getElementById('sim-post-draft').classList.remove('hidden');
+                document.getElementById('sim-pool-body').classList.add('hidden'); // Hero Pool hết việc khi draft xong
                 renderTeamMatrix();
                 renderSpikeTimeline();
                 renderGameplan();
                 renderAutoAnalysis();
                 renderDamageComparison();
                 stopTimer();
+                simPanelCollapsed = true;
+                applySimPanelCollapse();
             } else {
                 const nextStep = draftSteps[simStep];
                 document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${nextStep.label}`;
@@ -947,7 +966,10 @@
 
             document.getElementById('sim-finish-panel').classList.add('hidden');
             document.getElementById('sim-post-draft').classList.add('hidden');
+            document.getElementById('sim-pool-body').classList.remove('hidden');
             document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${draftSteps[simStep].label}`;
+            simPanelCollapsed = false; // hoàn tác là đang chỉnh sửa tiếp -> mở lại panel điều khiển
+            applySimPanelCollapse();
 
             cancelSimSelect();
             updateSimUI();
@@ -2103,6 +2125,35 @@
             }).join('') + `<div class="text-[11px] text-slate-500 mt-2"><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle" style="background:#f97316"></span> Vật lý &nbsp; <span class="inline-block w-2.5 h-2.5 rounded-sm align-middle" style="background:#a78bfa"></span> Phép</div>`;
         }
 
+        // --- THU GỌN BẢNG ĐIỀU KHIỂN CUỐI TRANG ---
+        // Trên điện thoại, khối "Simulator Action Menu" nằm sticky suốt trận và chiếm chỗ cố định.
+        // Khi draft xong, Xác nhận/Hủy chọn/Hoàn tác/đồng hồ hầu như hết cần dùng ngay lập tức — tự thu
+        // gọn về 1 dòng để nhường chỗ đọc Win Condition Matrix/Gameplan, nhưng vẫn bấm mở lại được ngay
+        // (vd để Hoàn tác sau khi đã xem xong đội hình).
+        let simPanelCollapsed = false;
+        function applySimPanelCollapse() {
+            const body = document.getElementById('sim-panel-body');
+            const arrow = document.getElementById('sim-panel-arrow');
+            if (!body || !arrow) return;
+            body.classList.toggle('hidden', simPanelCollapsed);
+            arrow.textContent = simPanelCollapsed ? '▸ Mở rộng' : '▾ Thu gọn';
+        }
+        function toggleSimPanel() {
+            simPanelCollapsed = !simPanelCollapsed;
+            applySimPanelCollapse();
+        }
+        function updateSimPanelSummary() {
+            const el = document.getElementById('sim-panel-summary');
+            if (!el) return;
+            if (simStep >= draftSteps.length) {
+                el.textContent = '🎉 Draft hoàn tất';
+            } else if (simSelectedHero) {
+                el.textContent = `Đã chọn ${simSelectedHero} — bấm Xác nhận`;
+            } else if (draftSteps[simStep]) {
+                el.textContent = simStep === 0 ? `Bắt đầu: ${draftSteps[simStep].label}` : `Lượt: ${draftSteps[simStep].label}`;
+            }
+        }
+
         function resetSimulator() {
             simStep = 0;
             simHistory = [];
@@ -2110,9 +2161,12 @@
             simState.red = { ban: [null, null, null, null], pick: [null, null, null, null, null] };
             document.getElementById('sim-finish-panel').classList.add('hidden');
             document.getElementById('sim-post-draft').classList.add('hidden');
+            document.getElementById('sim-pool-body').classList.remove('hidden');
             document.getElementById('sim-next-step').innerText = `Bắt đầu: ${draftSteps[0].label}`;
             document.getElementById('sim-counter-title').innerText = 'Gợi ý Đối Phương (Counter)';
             document.getElementById('sim-counter-info').innerHTML = `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`;
+            simPanelCollapsed = false;
+            applySimPanelCollapse();
             cancelSimSelect(); // xóa tướng đang chọn dở, tránh để lại panel thao tác/cảnh báo cũ
             updateSimUI();
             renderSimPool();
@@ -2162,19 +2216,24 @@
             refreshCounterPanel();
             if (simStep >= draftSteps.length) {
                 document.getElementById('sim-action-panel').classList.add('hidden');
+                document.getElementById('sim-idle-panel').classList.add('hidden');
                 document.getElementById('sim-finish-panel').classList.remove('hidden');
                 document.getElementById('sim-post-draft').classList.remove('hidden');
+                document.getElementById('sim-pool-body').classList.add('hidden');
                 renderTeamMatrix();
                 renderSpikeTimeline();
                 renderGameplan();
                 renderAutoAnalysis();
                 renderDamageComparison();
+                simPanelCollapsed = true;
             } else {
                 document.getElementById('sim-next-step').innerText = simStep === 0
                     ? `Bắt đầu: ${draftSteps[0].label}`
                     : `Lượt tiếp theo: ${draftSteps[simStep].label}`;
             }
         }
+        applySimPanelCollapse();
+        updateSimPanelSummary();
     </script>
 </body>
 </html>
