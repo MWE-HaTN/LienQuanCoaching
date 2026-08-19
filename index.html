@@ -1063,7 +1063,8 @@
 
             // Lượt kế tiếp so với lượt vừa pick (atStepIndex), dùng được cả khi dựng lại sau Hoàn tác
             const nextStep = draftSteps[atStepIndex + 1];
-            const sameTeamPicksNext = nextStep && nextStep.type === 'pick' && nextStep.team === pickedByTeam;
+            if (!nextStep) return; // draft đã xong, không còn lượt nào để gợi ý
+            const sameTeamPicksNext = nextStep.type === 'pick' && nextStep.team === pickedByTeam;
 
             if (sameTeamPicksNext) {
                 // Đội mình vừa pick và sắp pick tiếp -> gợi ý Phối hợp thay vì Counter (pick trước đó không phải của đối phương)
@@ -1075,13 +1076,64 @@
                        <div class="text-cyan-400 font-semibold">${syncText}</div>
                        <div class="text-slate-400 text-xs mt-2 italic">Đội bạn pick tiếp ngay sau đây — ưu tiên tướng ăn ý để dựng combo!</div>`
                     : `<div class="text-slate-400 text-xs italic">Đội bạn pick tiếp ngay sau đây — ${heroName} chưa có dữ liệu phối hợp cụ thể, hãy ưu tiên lấp vị trí còn thiếu.</div>`;
-            } else if (heroData.counter) {
-                titleEl.innerText = 'Gợi ý Đối Phương (Counter)';
-                infoEl.innerHTML = `
-                    <div class="text-rose-400 font-bold mb-1">Để counter ${heroName}:</div>
-                    <div class="text-emerald-400 font-semibold">${heroData.counter}</div>
-                    <div class="text-slate-400 text-xs mt-2 italic">Hãy chuẩn bị để pick hoặc ban các tướng này!</div>`;
+                return;
             }
+
+            // Lượt sau là của đội KHÁC (hoặc là lượt cấm) — panel này phải phục vụ đội sắp hành động,
+            // chứ không phải liệt kê counter cho một vị trí họ không còn tác động được nữa. Counter Pool
+            // gần như luôn là tướng cùng lane (xem counterRelation ở trên), nên nếu lane đó đã đủ người
+            // ở đội sắp hành động thì toàn bộ danh sách counter là lời khuyên chết.
+            const us = nextStep.team;
+            const usOpenPos = getOpenPositions(us);
+            // Chỉ xét lane CHÍNH của heroName — counter chỉ có nghĩa khi "chúng ta" còn đúng lane đó để
+            // đối đầu trực tiếp. Flex của heroName (thuộc đội kia) không liên quan gì tới việc này.
+            const servesOpenPos = usOpenPos.includes(heroData.pos);
+
+            if (nextStep.type === 'ban') {
+                // Lượt sau là cấm, không phải pick -> "counter" không dùng được ở đây. Thứ có thể hành
+                // động ngay là phá combo: cấm những tướng ăn ý với con vừa pick trước khi họ ráp đủ.
+                titleEl.innerText = 'Gợi ý Lượt Cấm Tiếp Theo';
+                const meta = draftData.find(d => d.hero === heroName);
+                const syncNames = meta && meta.sync && meta.sync !== '—' ? meta.sync.split(',').map(s => s.trim()) : [];
+                const comboTargets = getAvailableDraftPool().filter(d => syncNames.includes(d.hero));
+                infoEl.innerHTML = comboTargets.length > 0
+                    ? `<div class="text-rose-400 font-bold mb-1">Phá combo của ${heroName}:</div>
+                       <div class="text-emerald-400 font-semibold">${comboTargets.map(d => `${d.hero} (${d.tier})`).join(', ')}</div>
+                       <div class="text-slate-400 text-xs mt-2 italic">Đây là tướng ăn ý với ${heroName} — cấm để họ không ráp được combo.</div>`
+                    : `<div class="text-slate-400 text-xs italic">${heroName} chưa có dữ liệu phối hợp cụ thể để nhắm cấm phá combo.</div>`;
+                return;
+            }
+
+            const available = getAvailableDraftPool();
+            if (servesOpenPos && heroData.counter) {
+                const counterNames = heroData.counter.split(' / ').map(s => s.trim());
+                const live = available.filter(d => counterNames.includes(d.hero));
+                if (live.length > 0) {
+                    titleEl.innerText = 'Gợi ý Đối Phương (Counter)';
+                    infoEl.innerHTML = `
+                        <div class="text-rose-400 font-bold mb-1">Để counter ${heroName}:</div>
+                        <div class="text-emerald-400 font-semibold">${live.map(d => `${d.hero} (${d.tier})`).join(', ')}</div>
+                        <div class="text-slate-400 text-xs mt-2 italic">Hãy chuẩn bị để pick hoặc ban các tướng này!</div>`;
+                    return;
+                }
+            }
+
+            // Vị trí của heroName đã đủ người ở đội sắp pick, hoặc mọi tướng khắc chế đều đã hết —
+            // counter trực tiếp là lời khuyên chết. Đổi sang đúng bộ máy chấm điểm dùng cho Gợi ý Lượt
+            // (lấp vị trí trống + đối lane/khắc chế + bù nhu cầu đội hình), để hai nơi không mâu thuẫn nhau.
+            titleEl.innerText = 'Gợi ý Theo Nhu Cầu Đội Hình';
+            const usPicks = simState[us].pick.filter(h => h);
+            const themPicks = simState[pickedByTeam].pick.filter(h => h);
+            const ranked = buildRankedPicks(available, usPicks, themPicks, usOpenPos).filter(x => x.score > 0);
+            const reasonNoDirect = servesOpenPos
+                ? `Các tướng khắc chế ${heroName} đều đã bị cấm/lấy.`
+                : `${heroData.pos} bên bạn đã đủ người — dù ${heroName} có tướng khắc chế, bạn cũng không còn chỗ để dùng.`;
+            infoEl.innerHTML = ranked.length > 0
+                ? `<div class="text-amber-300 font-bold mb-1">${reasonNoDirect}</div>
+                   <div class="space-y-1">${ranked.slice(0, 2).map(x => `<div><span class="text-emerald-400 font-semibold">${x.d.hero} (${x.d.tier})</span> <span class="text-slate-400 text-xs">— ${x.reasons.join(', ')}</span></div>`).join('')}</div>
+                   <div class="text-slate-400 text-xs mt-2 italic">Ưu tiên theo vị trí còn trống + nhu cầu đội hình, không riêng việc khắc chế ${heroName}.</div>`
+                : `<div class="text-amber-300 font-bold mb-1">${reasonNoDirect}</div>
+                   <div class="text-slate-400 text-xs italic mt-1">Chưa có gợi ý phù hợp cho các vị trí còn lại — tự cân nhắc theo tình huống thực tế.</div>`;
         }
 
         // --- AI COACH LOGIC ---
