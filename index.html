@@ -177,15 +177,16 @@
             </div>
 
             <!-- Kế hoạch Đội Hình: đấu Bo1 nên khó bị đối thủ bắt bài trước, nhưng vẫn cần 1 hướng đi rõ
-                 ràng ngay từ đầu thay vì chỉ tính từng lượt — 5 vị trí/đội gợi ý sẵn theo tier + flex,
-                 tự tính lại mỗi lượt và đánh dấu 🔄 khi tướng dự kiến bị đối phương cấm/lấy mất. -->
+                 ràng ngay từ đầu thay vì chỉ tính từng lượt — mô phỏng cả draft (simulateDraftProjection)
+                 theo đúng thứ tự lượt thật nên 2 đội tự khác nhau/counter nhau ngay từ đầu thay vì hiện
+                 y hệt nhau, tự tính lại mỗi lượt và đánh dấu 🔄 khi tướng dự kiến bị cấm/lấy mất thật. -->
             <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-6">
                 <button onclick="toggleTeamPlan()" class="w-full flex items-center justify-between gap-2 text-left mb-1">
                     <h4 class="text-amber-400 font-bold text-sm heading">🧭 Kế Hoạch Đội Hình (tự xoay theo diễn biến)</h4>
                     <span id="team-plan-arrow" class="text-slate-400 flex-shrink-0 text-xs">▾ Thu gọn</span>
                 </button>
                 <div id="team-plan-body">
-                    <p class="text-xs text-slate-400 mb-3">Gợi ý 1 tướng lý tưởng / vị trí cho mỗi đội, tính theo tier + nhu cầu đội hình hiện tại. Vị trí đánh dấu 🔄 nghĩa là tướng dự kiến ban đầu đã bị cấm/lấy mất — panel tự chuyển sang phương án tốt nhất kế tiếp.</p>
+                    <p class="text-xs text-slate-400 mb-3">Mô phỏng cả 2 bên đều chọn tối ưu theo đúng thứ tự lượt Cấm/Pick thật (kể cả counter đối phương lẫn ăn ý với chính đồng đội) — nên 2 đội tự khác nhau ngay từ đầu, không chỉ 1 danh sách tier giống hệt nhau. Tướng có nền gạch ngang là <b>dự kiến</b> (bấm để chọn thẳng nếu đúng ý), đã pick thật thì có dấu ✓. Vị trí đánh dấu 🔄 nghĩa là tướng dự kiến ban đầu đã bị cấm/lấy mất thật.</p>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div>
                             <div class="text-xs font-bold text-blue-400 uppercase mb-2">Team Blue</div>
@@ -1606,7 +1607,10 @@
         // --- KẾ HOẠCH ĐỘI HÌNH: 1 gợi ý tướng / vị trí còn trống, tự xoay khi tướng dự kiến bị mất ---
         // Đấu Bo1 nên gần như không bị đối thủ bắt bài trước, nhưng vẫn cần 1 hướng đi rõ ràng ngay từ
         // đầu draft thay vì chỉ tính từng lượt riêng lẻ. Ưu tiên vị trí khan hiếm nhất trước khi gán, để
-        // tránh 2 vị trí cùng nhắm vào đúng 1 tướng flex duy nhất.
+        // tránh 2 vị trí cùng nhắm vào đúng 1 tướng flex duy nhất. (Giờ chỉ còn dùng cho getIdealPlan()
+        // — mốc "chuẩn" tĩnh để so sánh; kế hoạch hiển thị thật cho từng đội đã chuyển sang
+        // simulateDraftProjection() bên dưới, vì tính riêng từng đội độc lập kiểu này sẽ cho ra kết quả
+        // giống hệt nhau khi cả 2 chưa hành động gì — không có cảm giác 2 đội đối đầu.)
         function suggestPlanForOpenPositions(available, myPicks, oppPicks, openPos) {
             const ranked = buildRankedPicks(available, myPicks, oppPicks, openPos).filter(x => x.score > 0);
             const depthOrder = buildPositionDepth(available, openPos).map(x => x.pos);
@@ -1621,7 +1625,7 @@
 
         // Kế hoạch "chuẩn" khi hoàn toàn chưa biết gì về đối thủ (myPicks/oppPicks rỗng, cả 5 vị trí
         // trống) — chỉ phụ thuộc dữ liệu tĩnh nên tính 1 lần rồi cache, dùng làm mốc để phát hiện lúc
-        // nào một vị trí phải xoay hướng vì tướng dự kiến ban đầu đã bị cấm/lấy mất.
+        // nào một vị trí phải xoay hướng vì tướng dự kiến ban đầu đã bị cấm/lấy mất thật.
         let idealPlanCache = null;
         function getIdealPlan() {
             if (!idealPlanCache) {
@@ -1631,50 +1635,92 @@
             return idealPlanCache;
         }
 
-        function buildTeamPlan(team) {
-            const opponent = team === 'blue' ? 'red' : 'blue';
+        // Mô phỏng toàn bộ phần draft CÒN LẠI (kể cả các lượt Cấm), dùng đúng bộ máy chấm điểm đang
+        // chạy thật cho mỗi lượt (buildRankedPicks/buildRankedBans), theo đúng thứ tự lượt thật
+        // (draftSteps) — để 2 đội tự nhiên khác nhau ngay từ đầu thay vì show 1 "đội hình mơ ước"
+        // giống hệt nhau khi chưa ai hành động: đội đi trước ở mỗi cặp lượt giành được tier cao hơn,
+        // đội đi sau buộc phải thích nghi (buildRankedPicks đã cộng điểm counter đối phương + phối hợp
+        // với chính đồng đội mình, kể cả pick mô phỏng của cùng đội), nên 2 kế hoạch vừa khác biệt/đối
+        // lập vừa vẫn ăn ý nội bộ chứ không phải chọn bừa cho có đủ 5 vị trí.
+        function simulateDraftProjection() {
+            const state = {
+                blue: { ban: [...simState.blue.ban], pick: [...simState.blue.pick] },
+                red: { ban: [...simState.red.ban], pick: [...simState.red.pick] }
+            };
+            function unavailableFrom(st) {
+                return [...st.blue.ban, ...st.blue.pick, ...st.red.ban, ...st.red.pick, ...seriesLocked].filter(h => h);
+            }
+            function availableFrom(st) {
+                const unavailable = unavailableFrom(st);
+                return draftData.filter(d => !unavailable.includes(d.hero)).sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
+            }
+            // Dùng computeLaneAssignment (tính cả flex) thay vì so .pos suông — nếu không, việc chọn
+            // "vị trí còn trống" cho lượt mô phỏng sau có thể tưởng nhầm 1 vị trí đã đủ người (2 tướng
+            // cùng .pos nhưng 1 con định flex) trong khi vị trí đó chưa chắc đã có ai, khiến mô phỏng tự
+            // dồn vào ngõ cụt (đã bắt gặp thật: dính 2 tướng chỉ flex được Support/Caesar, bỏ trống AD).
+            function openPosFrom(st, team) {
+                const allPos = ["Caesar", "Jungle", "Mid", "AD", "Support"];
+                const { assignment } = computeLaneAssignment(st[team].pick.filter(h => h));
+                return allPos.filter(p => !(p in assignment));
+            }
+            for (let i = 0; i < draftSteps.length; i++) {
+                const step = draftSteps[i];
+                if (state[step.team][step.type][step.index]) continue; // lượt này đã diễn ra thật, giữ nguyên
+                const opponent = step.team === 'blue' ? 'red' : 'blue';
+                const available = availableFrom(state);
+                if (available.length === 0) break;
+                const myPicks = state[step.team].pick.filter(h => h);
+                const oppPicks = state[opponent].pick.filter(h => h);
+                let chosen;
+                if (step.type === 'ban') {
+                    const oppOpenPos = openPosFrom(state, opponent);
+                    const ranked = buildRankedBans(available, myPicks, oppPicks, oppOpenPos);
+                    chosen = ranked.length > 0 ? ranked[0].d.hero : available[0].hero;
+                } else {
+                    const myOpenPos = openPosFrom(state, step.team);
+                    const ranked = buildRankedPicks(available, myPicks, oppPicks, myOpenPos).filter(x => x.score > 0);
+                    chosen = ranked.length > 0 ? ranked[0].d.hero : available[0].hero;
+                }
+                state[step.team][step.type][step.index] = chosen;
+            }
+            return { state };
+        }
+
+        function buildTeamPlan(team, projection) {
             const allPos = ["Caesar", "Jungle", "Mid", "AD", "Support"];
-            const myPicks = simState[team].pick.filter(h => h);
-            const oppPicks = simState[opponent].pick.filter(h => h);
-            const filledByPos = {};
-            myPicks.forEach(h => {
-                const hero = allHeroes.find(x => x.name === h);
-                if (hero) filledByPos[hero.pos] = h;
-            });
-            const openPos = getOpenPositions(team);
-            const available = getAvailableDraftPool(); // đã loại cả khóa Series (xem getUnavailableHeroes)
-            const suggested = suggestPlanForOpenPositions(available, myPicks, oppPicks, openPos);
+            const realPicks = simState[team].pick.filter(h => h);
+            const fullProjectedPicks = projection.state[team].pick.filter(h => h);
+            const { assignment } = computeLaneAssignment(fullProjectedPicks); // gán đúng vị trí, tính cả flex
             const ideal = getIdealPlan();
             const unavailableNow = new Set(getUnavailableHeroes());
 
             return allPos.map(pos => {
-                if (filledByPos[pos]) {
-                    const meta = draftData.find(d => d.hero === filledByPos[pos]);
-                    return { pos, hero: filledByPos[pos], tier: meta ? meta.tier : null, status: 'picked' };
+                const hero = assignment[pos];
+                if (!hero) return { pos, hero: null, status: 'none', pivoted: false };
+                const meta = draftData.find(d => d.hero === hero);
+                if (realPicks.includes(hero)) {
+                    return { pos, hero, tier: meta ? meta.tier : null, status: 'picked' };
                 }
-                const sug = suggested[pos];
                 const idealHero = ideal[pos] ? ideal[pos].d.hero : null;
-                const pivoted = !!(idealHero && sug && idealHero !== sug.d.hero && unavailableNow.has(idealHero));
-                return sug
-                    ? { pos, hero: sug.d.hero, tier: sug.d.tier, status: 'suggested', pivoted, idealHero }
-                    : { pos, hero: null, status: 'none', pivoted: false };
+                const pivoted = !!(idealHero && idealHero !== hero && unavailableNow.has(idealHero));
+                return { pos, hero, tier: meta ? meta.tier : null, status: 'projected', pivoted, idealHero };
             });
         }
 
-        function renderTeamPlanSide(team, containerId) {
+        function renderTeamPlanSide(team, containerId, projection) {
             const el = document.getElementById(containerId);
             if (!el) return;
             const laneWarning = buildLaneCoverageWarning(simState[team].pick.filter(h => h));
             const warningHtml = laneWarning
                 ? `<div class="mb-1.5 text-[11px] bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded px-2 py-1">⚠️ ${laneWarning.text}</div>`
                 : '';
-            el.innerHTML = warningHtml + buildTeamPlan(team).map(slot => {
+            el.innerHTML = warningHtml + buildTeamPlan(team, projection).map(slot => {
                 const posLabel = `<span class="text-slate-500 w-16 flex-shrink-0 text-[11px]">${slot.pos}</span>`;
                 let body;
                 if (slot.status === 'picked') {
                     body = `<span class="font-bold text-white truncate flex-1">${slot.hero} <span class="text-emerald-400">✓</span></span>`;
-                } else if (slot.status === 'suggested') {
-                    body = `<button onclick="selectSimHero('${jsEscape(slot.hero)}')" class="font-semibold text-emerald-300 hover:text-emerald-200 truncate flex-1 text-left">${slot.hero} <span class="${getTierClass(slot.tier)} text-[10px]">${slot.tier}</span></button>`;
+                } else if (slot.status === 'projected') {
+                    body = `<button onclick="selectSimHero('${jsEscape(slot.hero)}')" class="font-semibold text-slate-300 hover:text-emerald-300 truncate flex-1 text-left border-b border-dashed border-slate-600 hover:border-emerald-400" title="Dự kiến theo mô phỏng draft — bấm để chọn thẳng nếu đúng ý">${slot.hero} <span class="${getTierClass(slot.tier)} text-[10px]">${slot.tier}</span></button>`;
                 } else {
                     body = `<span class="text-slate-600 italic flex-1">— chưa có gợi ý</span>`;
                 }
@@ -1686,8 +1732,9 @@
         }
 
         function renderTeamPlan() {
-            renderTeamPlanSide('blue', 'team-plan-blue');
-            renderTeamPlanSide('red', 'team-plan-red');
+            const projection = simulateDraftProjection();
+            renderTeamPlanSide('blue', 'team-plan-blue', projection);
+            renderTeamPlanSide('red', 'team-plan-red', projection);
         }
 
         let teamPlanCollapsed = false;
