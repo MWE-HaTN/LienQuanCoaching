@@ -868,23 +868,30 @@
                 saveSeriesLocked();
                 input.value = '';
                 renderSeriesLockUI();
-                renderSimPool();
-                renderTeamPlan(); // khóa Series ảnh hưởng pool khả dụng -> kế hoạch phải tính lại
+                refreshAfterSeriesLockChange();
             }
         }
         function removeSeriesLock(name) {
             seriesLocked = seriesLocked.filter(n => n !== name);
             saveSeriesLocked();
             renderSeriesLockUI();
-            renderSimPool();
-            renderTeamPlan();
+            refreshAfterSeriesLockChange();
         }
         function clearSeriesLock() {
             seriesLocked = [];
             saveSeriesLocked();
             renderSeriesLockUI();
+            refreshAfterSeriesLockChange();
+        }
+
+        // Khóa Series đổi thẳng pool khả dụng (getUnavailableHeroes) — mọi panel tính theo pool đó phải
+        // vẽ lại ngay, không đợi tới lượt cấm/pick kế tiếp mới đúng.
+        function refreshAfterSeriesLockChange() {
             renderSimPool();
             renderTeamPlan();
+            renderAdvice();
+            refreshCounterPanel();
+            if (simSelectedHero) renderSelectionRisk(simSelectedHero);
         }
 
         // --- DRAFT SIMULATOR LOGIC ---
@@ -1209,8 +1216,12 @@
             return order[tier] !== undefined ? order[tier] : 7;
         }
 
+        // Tướng khóa Series (Bo3/Bo5) cũng "không dùng được" y như đã cấm/pick trong game này — gộp
+        // luôn ở đây để mọi nơi dùng getAvailableDraftPool()/getUnavailableHeroes() tự động đúng,
+        // thay vì mỗi chỗ gọi phải tự nhớ lọc thêm seriesLocked (dễ sót, từng sót ở renderAdvice/
+        // updateCounterInfo/renderSelectionRisk trước khi sửa).
         function getUnavailableHeroes() {
-            return [...simState.blue.ban, ...simState.blue.pick, ...simState.red.ban, ...simState.red.pick].filter(h => h);
+            return [...simState.blue.ban, ...simState.blue.pick, ...simState.red.ban, ...simState.red.pick, ...seriesLocked].filter(h => h);
         }
 
         function getAvailableDraftPool() {
@@ -1575,12 +1586,10 @@
                 if (hero) filledByPos[hero.pos] = h;
             });
             const openPos = getOpenPositions(team);
-            // getAvailableDraftPool() chỉ loại tướng đã cấm/pick trong game này — kế hoạch còn phải loại
-            // cả tướng khóa Series, nếu không gợi ý ra 1 tướng bấm vào là chọn nhầm tướng đáng lẽ không dùng được.
-            const available = getAvailableDraftPool().filter(d => !seriesLocked.includes(d.hero));
+            const available = getAvailableDraftPool(); // đã loại cả khóa Series (xem getUnavailableHeroes)
             const suggested = suggestPlanForOpenPositions(available, myPicks, oppPicks, openPos);
             const ideal = getIdealPlan();
-            const unavailableNow = new Set(getUnavailableHeroes().concat(seriesLocked));
+            const unavailableNow = new Set(getUnavailableHeroes());
 
             return allPos.map(pos => {
                 if (filledByPos[pos]) {
