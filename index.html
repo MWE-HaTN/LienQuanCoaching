@@ -176,6 +176,29 @@
                 <div id="series-lock-list" class="flex flex-wrap gap-2"></div>
             </div>
 
+            <!-- Kế hoạch Đội Hình: đấu Bo1 nên khó bị đối thủ bắt bài trước, nhưng vẫn cần 1 hướng đi rõ
+                 ràng ngay từ đầu thay vì chỉ tính từng lượt — 5 vị trí/đội gợi ý sẵn theo tier + flex,
+                 tự tính lại mỗi lượt và đánh dấu 🔄 khi tướng dự kiến bị đối phương cấm/lấy mất. -->
+            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-6">
+                <button onclick="toggleTeamPlan()" class="w-full flex items-center justify-between gap-2 text-left mb-1">
+                    <h4 class="text-amber-400 font-bold text-sm heading">🧭 Kế Hoạch Đội Hình (tự xoay theo diễn biến)</h4>
+                    <span id="team-plan-arrow" class="text-slate-400 flex-shrink-0 text-xs">▾ Thu gọn</span>
+                </button>
+                <div id="team-plan-body">
+                    <p class="text-xs text-slate-400 mb-3">Gợi ý 1 tướng lý tưởng / vị trí cho mỗi đội, tính theo tier + nhu cầu đội hình hiện tại. Vị trí đánh dấu 🔄 nghĩa là tướng dự kiến ban đầu đã bị cấm/lấy mất — panel tự chuyển sang phương án tốt nhất kế tiếp.</p>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs font-bold text-blue-400 uppercase mb-2">Team Blue</div>
+                            <div id="team-plan-blue" class="space-y-1.5"></div>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-rose-400 uppercase mb-2">Team Red</div>
+                            <div id="team-plan-red" class="space-y-1.5"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-start">
                 <!-- Team Blue -->
                 <div class="bg-slate-800/50 p-4 rounded-lg shadow-xl border border-blue-500/30">
@@ -846,6 +869,7 @@
                 input.value = '';
                 renderSeriesLockUI();
                 renderSimPool();
+                renderTeamPlan(); // khóa Series ảnh hưởng pool khả dụng -> kế hoạch phải tính lại
             }
         }
         function removeSeriesLock(name) {
@@ -853,12 +877,14 @@
             saveSeriesLocked();
             renderSeriesLockUI();
             renderSimPool();
+            renderTeamPlan();
         }
         function clearSeriesLock() {
             seriesLocked = [];
             saveSeriesLocked();
             renderSeriesLockUI();
             renderSimPool();
+            renderTeamPlan();
         }
 
         // --- DRAFT SIMULATOR LOGIC ---
@@ -943,6 +969,7 @@
             cancelSimSelect();
             renderSimPool();
             renderAdvice();
+            renderTeamPlan();
             refreshPostDraftPanels();
             saveDraftState();
 
@@ -961,6 +988,8 @@
                 stopTimer();
                 simPanelCollapsed = true;
                 applySimPanelCollapse();
+                teamPlanCollapsed = true; // draft xong, kế hoạch chỉ còn toàn ✓ -> trùng lặp với slot Pick ở trên
+                applyTeamPlanCollapse();
             } else {
                 const nextStep = draftSteps[simStep];
                 document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${nextStep.label}`;
@@ -981,11 +1010,14 @@
             document.getElementById('sim-next-step').innerText = `Lượt tiếp theo: ${draftSteps[simStep].label}`;
             simPanelCollapsed = false; // hoàn tác là đang chỉnh sửa tiếp -> mở lại panel điều khiển
             applySimPanelCollapse();
+            teamPlanCollapsed = false;
+            applyTeamPlanCollapse();
 
             cancelSimSelect();
             updateSimUI();
             renderSimPool();
             renderAdvice();
+            renderTeamPlan();
             refreshCounterPanel();
             refreshPostDraftPanels();
             saveDraftState();
@@ -1503,6 +1535,101 @@
                 };
             }).sort((a, b) => (a.count - b.count) || (a.flexCount - b.flexCount));
         }
+
+        // --- KẾ HOẠCH ĐỘI HÌNH: 1 gợi ý tướng / vị trí còn trống, tự xoay khi tướng dự kiến bị mất ---
+        // Đấu Bo1 nên gần như không bị đối thủ bắt bài trước, nhưng vẫn cần 1 hướng đi rõ ràng ngay từ
+        // đầu draft thay vì chỉ tính từng lượt riêng lẻ. Ưu tiên vị trí khan hiếm nhất trước khi gán, để
+        // tránh 2 vị trí cùng nhắm vào đúng 1 tướng flex duy nhất.
+        function suggestPlanForOpenPositions(available, myPicks, oppPicks, openPos) {
+            const ranked = buildRankedPicks(available, myPicks, oppPicks, openPos).filter(x => x.score > 0);
+            const depthOrder = buildPositionDepth(available, openPos).map(x => x.pos);
+            const used = new Set();
+            const plan = {};
+            depthOrder.forEach(pos => {
+                const best = ranked.find(x => !used.has(x.d.hero) && (x.d.pos === pos || (x.d.flex && x.d.flex !== '—' && x.d.flex === pos)));
+                if (best) { plan[pos] = best; used.add(best.d.hero); }
+            });
+            return plan;
+        }
+
+        // Kế hoạch "chuẩn" khi hoàn toàn chưa biết gì về đối thủ (myPicks/oppPicks rỗng, cả 5 vị trí
+        // trống) — chỉ phụ thuộc dữ liệu tĩnh nên tính 1 lần rồi cache, dùng làm mốc để phát hiện lúc
+        // nào một vị trí phải xoay hướng vì tướng dự kiến ban đầu đã bị cấm/lấy mất.
+        let idealPlanCache = null;
+        function getIdealPlan() {
+            if (!idealPlanCache) {
+                const pool = [...draftData].sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
+                idealPlanCache = suggestPlanForOpenPositions(pool, [], [], ["Caesar", "Jungle", "Mid", "AD", "Support"]);
+            }
+            return idealPlanCache;
+        }
+
+        function buildTeamPlan(team) {
+            const opponent = team === 'blue' ? 'red' : 'blue';
+            const allPos = ["Caesar", "Jungle", "Mid", "AD", "Support"];
+            const myPicks = simState[team].pick.filter(h => h);
+            const oppPicks = simState[opponent].pick.filter(h => h);
+            const filledByPos = {};
+            myPicks.forEach(h => {
+                const hero = allHeroes.find(x => x.name === h);
+                if (hero) filledByPos[hero.pos] = h;
+            });
+            const openPos = getOpenPositions(team);
+            // getAvailableDraftPool() chỉ loại tướng đã cấm/pick trong game này — kế hoạch còn phải loại
+            // cả tướng khóa Series, nếu không gợi ý ra 1 tướng bấm vào là chọn nhầm tướng đáng lẽ không dùng được.
+            const available = getAvailableDraftPool().filter(d => !seriesLocked.includes(d.hero));
+            const suggested = suggestPlanForOpenPositions(available, myPicks, oppPicks, openPos);
+            const ideal = getIdealPlan();
+            const unavailableNow = new Set(getUnavailableHeroes().concat(seriesLocked));
+
+            return allPos.map(pos => {
+                if (filledByPos[pos]) {
+                    const meta = draftData.find(d => d.hero === filledByPos[pos]);
+                    return { pos, hero: filledByPos[pos], tier: meta ? meta.tier : null, status: 'picked' };
+                }
+                const sug = suggested[pos];
+                const idealHero = ideal[pos] ? ideal[pos].d.hero : null;
+                const pivoted = !!(idealHero && sug && idealHero !== sug.d.hero && unavailableNow.has(idealHero));
+                return sug
+                    ? { pos, hero: sug.d.hero, tier: sug.d.tier, status: 'suggested', pivoted, idealHero }
+                    : { pos, hero: null, status: 'none', pivoted: false };
+            });
+        }
+
+        function renderTeamPlanSide(team, containerId) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            el.innerHTML = buildTeamPlan(team).map(slot => {
+                const posLabel = `<span class="text-slate-500 w-16 flex-shrink-0 text-[11px]">${slot.pos}</span>`;
+                let body;
+                if (slot.status === 'picked') {
+                    body = `<span class="font-bold text-white truncate flex-1">${slot.hero} <span class="text-emerald-400">✓</span></span>`;
+                } else if (slot.status === 'suggested') {
+                    body = `<button onclick="selectSimHero('${jsEscape(slot.hero)}')" class="font-semibold text-emerald-300 hover:text-emerald-200 truncate flex-1 text-left">${slot.hero} <span class="${getTierClass(slot.tier)} text-[10px]">${slot.tier}</span></button>`;
+                } else {
+                    body = `<span class="text-slate-600 italic flex-1">— chưa có gợi ý</span>`;
+                }
+                const pivotBadge = slot.pivoted
+                    ? `<span class="text-amber-400 text-[10px] flex-shrink-0 cursor-help" title="Kế hoạch gốc là ${slot.idealHero}, đã bị cấm/lấy mất — tự xoay sang ${slot.hero}">🔄</span>`
+                    : '';
+                return `<div class="flex items-center gap-2 bg-slate-800/60 rounded px-2 py-1.5 text-xs">${posLabel}${body}${pivotBadge}</div>`;
+            }).join('');
+        }
+
+        function renderTeamPlan() {
+            renderTeamPlanSide('blue', 'team-plan-blue');
+            renderTeamPlanSide('red', 'team-plan-red');
+        }
+
+        let teamPlanCollapsed = false;
+        function applyTeamPlanCollapse() {
+            const body = document.getElementById('team-plan-body');
+            const arrow = document.getElementById('team-plan-arrow');
+            if (!body || !arrow) return;
+            body.classList.toggle('hidden', teamPlanCollapsed);
+            arrow.textContent = teamPlanCollapsed ? '▸ Mở rộng' : '▾ Thu gọn';
+        }
+        function toggleTeamPlan() { teamPlanCollapsed = !teamPlanCollapsed; applyTeamPlanCollapse(); }
 
         // Đếm số tướng mạnh (S+/S) ĐÃ mất ở từng vị trí do cấm/pick. Cấm 2-3 tướng đi được đường trên
         // nghĩa là pool Caesar đang cạn — điều này ảnh hưởng cả 2 đội, không riêng đội đi cấm.
@@ -2186,10 +2313,13 @@
             setCounterPanel('Gợi ý Đối Phương (Counter)', `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`);
             simPanelCollapsed = false;
             applySimPanelCollapse();
+            teamPlanCollapsed = false;
+            applyTeamPlanCollapse();
             cancelSimSelect(); // xóa tướng đang chọn dở, tránh để lại panel thao tác/cảnh báo cũ
             updateSimUI();
             renderSimPool();
             renderAdvice();
+            renderTeamPlan();
             refreshPostDraftPanels();
             saveDraftState();
             restartTimerIfRunning();
@@ -2230,6 +2360,7 @@
         renderSimPool();
         updateSimUI();
         renderAdvice();
+        renderTeamPlan();
         refreshPostDraftPanels();
         if (restored) {
             refreshCounterPanel();
@@ -2245,6 +2376,7 @@
                 renderAutoAnalysis();
                 renderDamageComparison();
                 simPanelCollapsed = true;
+                teamPlanCollapsed = true;
             } else {
                 document.getElementById('sim-next-step').innerText = simStep === 0
                     ? `Bắt đầu: ${draftSteps[0].label}`
@@ -2252,6 +2384,7 @@
             }
         }
         applySimPanelCollapse();
+        applyTeamPlanCollapse();
         updateSimPanelSummary();
 
         // Thu gọn header trên mobile khi cuộn xuống — sticky nhưng full logo+tiêu đề+phụ đề choán mất
