@@ -1216,9 +1216,19 @@
         }
 
         // --- AI COACH LOGIC ---
+        const TIER_ORDER = ["S+", "S", "A+", "A", "B", "C", "D"];
         function tierRank(tier) {
-            const order = { "S+": 0, "S": 1, "A+": 2, "A": 3, "B": 4, "C": 5, "D": 6 };
-            return order[tier] !== undefined ? order[tier] : 7;
+            const idx = TIER_ORDER.indexOf(tier);
+            return idx !== -1 ? idx : 7;
+        }
+
+        // Tier trong draftData chỉ đúng ở vị trí CHÍNH (.pos) của tướng. Khi tướng flex sang vị trí phụ,
+        // tier thật sự phải thấp hơn (chơi lệch vai trò quen thuộc không thể mạnh bằng chuyên lane) — nhưng
+        // dữ liệu không có tier riêng cho từng vị trí, nên hạ 1 bậc trên thang tier làm quy ước chung, đủ
+        // để không đánh đồng "Zata S+ ở Mid" với "Zata flex sang Jungle" khi hiển thị/chấm điểm.
+        function degradeTier(tier, steps = 1) {
+            const idx = tierRank(tier);
+            return TIER_ORDER[Math.min(idx + steps, TIER_ORDER.length - 1)];
         }
 
         // Tướng khóa Series (Bo3/Bo5) cũng "không dùng được" y như đã cấm/pick trong game này — gộp
@@ -1234,13 +1244,13 @@
             return draftData.filter(d => !unavailable.includes(d.hero)).sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
         }
 
+        // Phải tính cả flex (giống computeLaneAssignment) chứ không chỉ nhìn .pos gốc — nếu không, một
+        // tướng đã flex sang lấp 1 vị trí (vd Zata Mid flex Jungle) vẫn bị coi là "chưa lấp" vị trí đó,
+        // khiến gợi ý pick/ban tiếp tục nhắm vào vị trí thực ra đã đủ người (từng xảy ra: gợi ý pick
+        // thêm rừng ở lượt pick cuối cùng dù rừng đã có Zata gánh).
         function getOpenPositions(team) {
-            const allPos = ["Caesar", "Jungle", "Mid", "AD", "Support"];
-            const filledPos = simState[team].pick.filter(h => h).map(h => {
-                const hero = allHeroes.find(x => x.name === h);
-                return hero ? hero.pos : null;
-            });
-            return allPos.filter(p => !filledPos.includes(p));
+            const picks = simState[team].pick.filter(h => h);
+            return computeLaneAssignment(picks).uncoveredPos;
         }
 
         function describeSuggestions(list, limit = 3) {
@@ -1442,8 +1452,9 @@
                 const servable = [];
                 if (myOpenPos.includes(d.pos)) servable.push(d.pos);
                 if (d.flex && d.flex !== '—' && myOpenPos.includes(d.flex)) servable.push(d.flex);
+                const usingFlex = !myOpenPos.includes(d.pos) && servable.length > 0;
                 if (myOpenPos.includes(d.pos)) { score += 30; reasons.push(`lấp ${d.pos}`); }
-                else if (servable.length > 0) { score += 22; reasons.push(`flex sang ${d.flex}`); }
+                else if (usingFlex) { score += 22; reasons.push(`flex sang ${d.flex}`); }
                 else { score -= 45; }
 
                 // 1b. Vị trí sắp cạn tướng mạnh -> cộng điểm để lấy trước (tính theo vị trí khan hiếm nhất
@@ -1495,8 +1506,11 @@
                     else if (!myTools.has(t) && (t === 'engage' || t === 'peel' || t === 'frontline')) { score += 5; }
                 });
 
-                // 6. Sức mạnh meta
-                score += (7 - tierRank(d.tier)) * 4;
+                // 6. Sức mạnh meta — tier trong data chỉ đúng ở vị trí chính, nên nếu chỉ dùng được qua
+                // flex thì phải hạ tier trước khi tính, tránh đánh giá quá cao (vd Zata S+ ở Mid không
+                // thể mạnh ngang S+ khi bị đẩy sang Jungle)
+                const effTier = usingFlex ? degradeTier(d.tier) : d.tier;
+                score += (7 - tierRank(effTier)) * 4;
 
                 return { d, score, reasons };
             }).sort((a, b) => b.score - a.score);
@@ -1543,8 +1557,9 @@
                     if (oppNeeds.includes(t)) { score += 16; reasons.push(`bù ${toolLabels[t]} họ đang thiếu`); }
                 });
 
-                // 5. Sức mạnh meta
-                score += (7 - tierRank(d.tier)) * 4;
+                // 5. Sức mạnh meta — chỉ còn trống qua flex thì hạ tier trước khi tính, cùng quy ước với buildRankedPicks
+                const effTier = (!openForPos && openForFlex) ? degradeTier(d.tier) : d.tier;
+                score += (7 - tierRank(effTier)) * 4;
 
                 return { d, score, reasons };
             }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
@@ -1698,12 +1713,17 @@
                 const hero = assignment[pos];
                 if (!hero) return { pos, hero: null, status: 'none', pivoted: false };
                 const meta = draftData.find(d => d.hero === hero);
+                // Tier trong data chỉ đúng ở vị trí chính (meta.pos) — hiển thị ở đây là vị trí thực tế
+                // (có thể là flex), nên phải hạ tier để không đánh đồng "Zata S+ ở Mid" với Zata bị đẩy
+                // sang Jungle.
+                const flexed = !!(meta && meta.pos !== pos);
+                const tier = meta ? (flexed ? degradeTier(meta.tier) : meta.tier) : null;
                 if (realPicks.includes(hero)) {
-                    return { pos, hero, tier: meta ? meta.tier : null, status: 'picked' };
+                    return { pos, hero, tier, flexed, status: 'picked' };
                 }
                 const idealHero = ideal[pos] ? ideal[pos].d.hero : null;
                 const pivoted = !!(idealHero && idealHero !== hero && unavailableNow.has(idealHero));
-                return { pos, hero, tier: meta ? meta.tier : null, status: 'projected', pivoted, idealHero };
+                return { pos, hero, tier, flexed, status: 'projected', pivoted, idealHero };
             });
         }
 
@@ -1716,11 +1736,14 @@
                 : '';
             el.innerHTML = warningHtml + buildTeamPlan(team, projection).map(slot => {
                 const posLabel = `<span class="text-slate-500 w-16 flex-shrink-0 text-[11px]">${slot.pos}</span>`;
+                const flexTitle = `${slot.hero} đang flex khỏi vị trí chính — tier hiển thị đã hạ 1 bậc cho vị trí ${slot.pos}`;
                 let body;
                 if (slot.status === 'picked') {
-                    body = `<span class="font-bold text-white truncate flex-1">${slot.hero} <span class="text-emerald-400">✓</span></span>`;
+                    const flexNote = slot.flexed ? ` <span class="${getTierClass(slot.tier)} text-[10px] cursor-help" title="${flexTitle}">${slot.tier} flex</span>` : '';
+                    body = `<span class="font-bold text-white truncate flex-1">${slot.hero} <span class="text-emerald-400">✓</span>${flexNote}</span>`;
                 } else if (slot.status === 'projected') {
-                    body = `<button onclick="selectSimHero('${jsEscape(slot.hero)}')" class="font-semibold text-slate-300 hover:text-emerald-300 truncate flex-1 text-left border-b border-dashed border-slate-600 hover:border-emerald-400" title="Dự kiến theo mô phỏng draft — bấm để chọn thẳng nếu đúng ý">${slot.hero} <span class="${getTierClass(slot.tier)} text-[10px]">${slot.tier}</span></button>`;
+                    const tierTitle = slot.flexed ? flexTitle : `Tier ở vị trí chính ${slot.pos}`;
+                    body = `<button onclick="selectSimHero('${jsEscape(slot.hero)}')" class="font-semibold text-slate-300 hover:text-emerald-300 truncate flex-1 text-left border-b border-dashed border-slate-600 hover:border-emerald-400" title="Dự kiến theo mô phỏng draft — bấm để chọn thẳng nếu đúng ý">${slot.hero} <span class="${getTierClass(slot.tier)} text-[10px]" title="${tierTitle}">${slot.tier}${slot.flexed ? ' flex' : ''}</span></button>`;
                 } else {
                     body = `<span class="text-slate-600 italic flex-1">— chưa có gợi ý</span>`;
                 }
