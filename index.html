@@ -1524,19 +1524,27 @@
         // --- DÒNG QUYẾT ĐỊNH ---
         // Draft chỉ có 40s và coach thường cầm điện thoại: phải thấy NGAY nên làm gì, phần phân tích
         // gấp lại cho ai muốn đọc. Trước đây toàn bộ lý giải đổ thẳng ra màn hình nên không kịp đọc.
-        function bigHeroChip(d) {
-            return `<button onclick="selectSimHero('${jsEscape(d.hero)}')" class="text-lg font-bold text-emerald-300 hover:text-emerald-200 underline decoration-emerald-500/40 underline-offset-4">${d.hero}</button><span class="${getTierClass(d.tier)} text-xs font-bold ml-1">${d.tier}</span>`;
-        }
-        function buildHeadline(verb, d, why, alts, alert) {
-            const verbCls = verb === 'CẤM' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-slate-900';
-            return `<div class="bg-slate-900 rounded-lg border-l-4 ${verb === 'CẤM' ? 'border-rose-500' : 'border-emerald-500'} p-3 mb-2">
-                ${alert ? `<div class="text-[11px] font-bold text-amber-300 mb-1.5">${alert}</div>` : ''}
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-[10px] font-bold ${verbCls} rounded px-1.5 py-0.5 heading">${verb}</span>
-                    ${bigHeroChip(d)}
+        // Hiện 2 phương án ngang hàng (coach cần thứ để cân, không phải một mệnh lệnh), phương án
+        // thứ 3 trở đi thu về dạng chip, phần phân tích nằm trong <details>.
+        function buildDecision(verb, items, alts, alert) {
+            const isBan = verb === 'CẤM';
+            const verbCls = isBan ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-slate-900';
+            // Chốt chặn: hai dòng lý do giống hệt nhau chỉ tổ tốn màn hình
+            items = items.map((it, i) => (i > 0 && it.why === items[0].why)
+                ? { ...it, why: 'Lý do tương đương phương án 1.' } : it);
+            const rows = items.map((it, i) => `<div class="${i > 0 ? 'mt-2 pt-2 border-t border-slate-800' : ''}">
+                <div class="flex items-baseline gap-1.5 flex-wrap">
+                    <span class="text-slate-500 font-bold text-xs">${i + 1}.</span>
+                    <button onclick="selectSimHero('${jsEscape(it.d.hero)}')" class="${i === 0 ? 'text-lg' : 'text-base'} font-bold text-emerald-300 hover:text-emerald-200 underline decoration-emerald-500/40 underline-offset-4">${it.d.hero}</button>
+                    <span class="${getTierClass(it.d.tier)} text-xs font-bold">${it.d.tier}</span>
                 </div>
-                <div class="text-xs text-slate-300 mt-1.5 leading-snug">${why}</div>
-                ${alts && alts.length ? `<div class="text-[11px] text-slate-400 mt-1.5">Hoặc: ${alts.map(a => `<button onclick="selectSimHero('${jsEscape(a.hero)}')" class="text-slate-300 hover:text-white underline decoration-slate-600 mr-2">${a.hero} (${a.tier})</button>`).join('')}</div>` : ''}
+                <div class="text-xs text-slate-300 mt-0.5 leading-snug">${it.why}</div>
+            </div>`).join('');
+            return `<div class="bg-slate-900 rounded-lg border-l-4 ${isBan ? 'border-rose-500' : 'border-emerald-500'} p-3 mb-2">
+                ${alert ? `<div class="text-[11px] font-bold text-amber-300 mb-2">${alert}</div>` : ''}
+                <span class="text-[10px] font-bold ${verbCls} rounded px-1.5 py-0.5 heading">${verb}</span>
+                <div class="mt-1.5">${rows}</div>
+                ${alts && alts.length ? `<div class="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">Hoặc: ${alts.map(a => `<button onclick="selectSimHero('${jsEscape(a.hero)}')" class="text-slate-300 hover:text-white underline decoration-slate-600 mr-2">${a.hero} (${a.tier})</button>`).join('')}</div>` : ''}
             </div>`;
         }
 
@@ -1585,11 +1593,19 @@
                     }
                     sections.push(renderDepthLine(buildPositionDepth(available, oppOpenPos)));
                     if (rankedBans.length > 0) {
-                        const t = rankedBans[0];
-                        const why = !t.alt ? 'Không còn tướng nào thay được vai này của họ.'
-                            : t.gap >= 8 ? `Thay thế tốt nhất còn lại của họ là ${t.alt.hero} (${t.alt.tier}) — kém hơn rõ rệt.`
-                            : `Cấm xong họ chuyển sang ${t.alt.hero} (${t.alt.tier}), giá trị thấp — cân nhắc cấm chỗ khác.`;
-                        headline = buildHeadline('CẤM', t.d, why, rankedBans.slice(1, 3).map(x => x.d),
+                        const whyBan = (x, i) => {
+                            // Phương án 2 thường chính là tướng thay thế của phương án 1 — nói thẳng là
+                            // hai con cùng vai, chứ đừng bảo "cấm xong họ lấy con kia" nghe như tự mâu thuẫn.
+                            if (i > 0 && x.alt && x.alt.hero === rankedBans[0].d.hero) {
+                                return `Cùng vai với phương án 1 — chỉ chặn được một trong hai, cấm con nào cũng để con kia lại.`;
+                            }
+                            return !x.alt ? 'Không còn tướng nào thay được vai này của họ.'
+                                : x.gap >= 8 ? `Thay thế còn lại của họ là ${x.alt.hero} (${x.alt.tier}) — kém hơn rõ rệt.`
+                                : `Họ chuyển sang ${x.alt.hero} (${x.alt.tier}) là gần như không mất gì.`;
+                        };
+                        headline = buildDecision('CẤM',
+                            rankedBans.slice(0, 2).map((x, i) => ({ d: x.d, why: whyBan(x, i) })),
+                            rankedBans.slice(2, 4).map(x => x.d),
                             forced ? `🔒 Họ bị ép vào ${oppOpenPos.join(' và ')} — cấm đây là chặn thẳng.` : '');
                         sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-2">` +
                             rankedBans.slice(0, 3).map(x => `<div>${banValueBadge(x.gap)} ${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span><div class="text-[11px] ml-1 mt-0.5">↳ ${banValueNote(x)}</div></div>`).join('') +
@@ -1626,11 +1642,17 @@
                         sections.push(`<div class="mb-2 text-slate-400">ℹ️ Chưa vị trí nào khan hiếm (mỏng nhất là <b class="text-slate-300">${thinnest.pos}</b> vẫn còn ${thinnest.count} lựa chọn mạnh) — cấm lúc này khó siết được pool, tướng nào cấm đi họ cũng có con ngang cơ thay thế. Đây là lượt để <b class="text-slate-300">deny First Pick / cấm tướng threat</b>, còn giá trị cấm thật sự sẽ rõ ở Ban 3-4.</div>`);
                     }
                     if (rankedBans.length > 0) {
-                        const t = rankedBans[0];
-                        headline = buildHeadline('CẤM', t.d,
-                            t.minLeft <= 2 ? `Siết ${t.d.pos} nhanh nhất — cấm xong họ chỉ còn ${t.minLeft} tướng chuyên lane.`
-                                           : `Chưa vị trí nào khan hiếm — cấm theo threat, giá trị siết pool sẽ rõ ở Ban 3-4.`,
-                            rankedBans.slice(1, 3).map(x => x.d), '');
+                        const whyP1 = (x, i) => {
+                            if (i > 0 && x.d.pos === rankedBans[0].d.pos) {
+                                return `Cũng ở ${x.d.pos} như phương án 1 — cấm cả hai mới thật sự siết được lane này.`;
+                            }
+                            return x.minLeft <= 2
+                                ? `Siết ${x.d.pos} nhanh nhất — cấm xong họ chỉ còn ${x.minLeft} tướng chuyên lane.`
+                                : `${x.d.pos} còn ${x.minLeft} tướng chuyên lane — cấm theo threat chứ chưa siết được pool.`;
+                        };
+                        headline = buildDecision('CẤM',
+                            rankedBans.slice(0, 2).map((x, i) => ({ d: x.d, why: whyP1(x, i) })),
+                            rankedBans.slice(2, 4).map(x => x.d), '');
                         sections.push(`<div class="mb-2"><b class="text-rose-300">🎯 Ưu tiên cấm:</b><div class="mt-1 space-y-2">` +
                             rankedBans.slice(0, 3).map((x, i) => {
                                 const detail = x.after.map(a => a.viaFlex
@@ -1674,11 +1696,11 @@
                 }
 
                 // Bảng xếp hạng gợi ý tổng hợp
-                const topPicks = ranked.filter(x => x.score > 0).slice(0, 3);
+                const topPicks = ranked.filter(x => x.score > 0).slice(0, 4);
                 if (topPicks.length > 0) {
-                    const t = topPicks[0];
-                    const urgent = renderScarcityWarning(available, myOpenPos, myPicksLeft) ? myOpenPos : [];
-                    headline = buildHeadline('PICK', t.d, t.reasons.slice(0, 2).join(', ') + '.', topPicks.slice(1, 3).map(x => x.d),
+                    headline = buildDecision('PICK',
+                        topPicks.slice(0, 2).map(x => ({ d: x.d, why: x.reasons.slice(0, 2).join(', ') + '.' })),
+                        topPicks.slice(2, 4).map(x => x.d),
                         hasLastPick && oppPicks.length > 0 ? '👑 Last Pick — hard-counter thẳng, không cần giấu bài.' : '');
                     sections.push(`<div class="mb-2"><b class="text-amber-300">⭐ Lựa chọn tối ưu:</b><div class="mt-1 space-y-1">` +
                         topPicks.map(x => `<div>${heroChip(x.d)} <span class="text-slate-400">— ${x.reasons.join(', ')}</span></div>`).join('') +
