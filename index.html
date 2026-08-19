@@ -230,13 +230,8 @@
                         </div>
 
                         <div id="sim-hero-pool" class="grid grid-cols-4 md:grid-cols-5 gap-2 max-h-[300px] overflow-y-auto pr-2"></div>
-
-                        <div class="mt-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
-                            <h4 id="sim-counter-title" class="text-amber-400 font-bold heading mb-2 text-sm">Gợi ý Đối Phương (Counter)</h4>
-                            <div id="sim-counter-info" class="text-sm text-slate-300 min-h-[40px]">
-                                <span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>
-                            </div>
-                        </div>
+                        <!-- Gợi ý Đối Phương (Counter) đã chuyển hẳn xuống panel dưới cùng (sim-idle-panel) —
+                             đó là chỗ mắt người dùng đang đứng chờ lượt kế, giữ 2 bản ở đây chỉ tổ trùng lặp. -->
                     </div>
                 </div>
 
@@ -352,8 +347,8 @@
                         </div>
                         <div id="sim-idle-panel" class="text-center w-full">
                             <div class="text-amber-400 font-bold mb-1 text-lg" id="sim-next-step">Bắt đầu: Blue Ban 1</div>
-                            <!-- Mirror của #sim-counter-info (thẻ Hero Pool) ngay tại đây, để đọc gợi ý counter/combo
-                                 lúc đang đứng ở panel dưới cùng chờ lượt kế, khỏi phải lướt lên Hero Pool. -->
+                            <!-- Gợi ý Đối Phương (Counter)/Combo/Cấm tiếp theo — panel duy nhất hiện gợi ý này,
+                                 đặt ngay dưới "Lượt tiếp theo" vì đây là chỗ mắt người dùng đang đứng chờ. -->
                             <div class="text-left text-sm mt-1">
                                 <div id="sim-idle-counter-title" class="text-amber-400 font-bold heading mb-1 text-xs">Gợi ý Đối Phương (Counter)</div>
                                 <div id="sim-idle-counter-info" class="text-slate-300 text-xs">
@@ -1084,13 +1079,12 @@
         }
 
         function setCounterPanel(title, html) {
-            document.getElementById('sim-counter-title').innerText = title;
-            document.getElementById('sim-counter-info').innerHTML = html;
-            // Mirror lên panel dưới cùng (sim-idle-panel) để đọc được ngay, khỏi lướt lên Hero Pool.
-            const idleTitle = document.getElementById('sim-idle-counter-title');
-            const idleInfo = document.getElementById('sim-idle-counter-info');
-            if (idleTitle) idleTitle.innerText = title;
-            if (idleInfo) idleInfo.innerHTML = html;
+            // Panel duy nhất còn lại nằm ở sim-idle-panel (dưới cùng, luôn trong tầm mắt) — bản gốc từng
+            // đứng riêng ở thẻ Hero Pool đã bỏ vì trùng lặp với chỗ này.
+            const titleEl = document.getElementById('sim-idle-counter-title');
+            const infoEl = document.getElementById('sim-idle-counter-info');
+            if (titleEl) titleEl.innerText = title;
+            if (infoEl) infoEl.innerHTML = html;
         }
 
         function updateCounterInfo(heroName, pickedByTeam, atStepIndex) {
@@ -2173,8 +2167,7 @@
             document.getElementById('sim-post-draft').classList.add('hidden');
             document.getElementById('sim-pool-body').classList.remove('hidden');
             document.getElementById('sim-next-step').innerText = `Bắt đầu: ${draftSteps[0].label}`;
-            document.getElementById('sim-counter-title').innerText = 'Gợi ý Đối Phương (Counter)';
-            document.getElementById('sim-counter-info').innerHTML = `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`;
+            setCounterPanel('Gợi ý Đối Phương (Counter)', `<span class="text-slate-500 italic">Chưa có tướng nào được Pick...</span>`);
             simPanelCollapsed = false;
             applySimPanelCollapse();
             cancelSimSelect(); // xóa tướng đang chọn dở, tránh để lại panel thao tác/cảnh báo cũ
