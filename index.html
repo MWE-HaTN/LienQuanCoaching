@@ -1370,6 +1370,58 @@
             return warnings.sort((a, b) => a.level - b.level);
         }
 
+        // --- KIỂM TRA TRÙNG/THIẾU VỊ TRÍ (tính cả flex) ---
+        // Rút ra từ soi lại draft thực chiến: nhiều trận thua không phải vì tướng yếu mà vì đội hình
+        // trùng vai trò (2 Caesar, 2 Support...) hoặc bỏ trống hẳn 1 vị trí — lỗi phối hợp lúc pick,
+        // không phải lỗi tier. getOpenPositions() chỉ nhìn .pos của tướng đã pick nên không tự phát
+        // hiện được lỗi này (2 tướng cùng .pos vẫn chỉ tính 1 lần trong danh sách "đã lấp").
+        // Phải tính cả flex khi kiểm tra: ép Volkath/Triệu Vân/Florentino... đi Jungle là flex hợp lệ,
+        // không phải lỗi — nếu chỉ so .pos suông sẽ báo nhầm y như lúc phân tích thủ công ban đầu.
+        // Kuhn's algorithm: mỗi tướng nối tới 1-2 vị trí (chính + flex), tìm cách gán tối đa tướng vào
+        // vị trí riêng biệt (ghép cặp lớn nhất trên đồ thị 2 phía). Tướng nào không gán được dù đã thử
+        // hết các phương án (kể cả nhường chỗ / đổi chỗ cho tướng khác qua đường tăng cường) mới là
+        // tướng thừa thật sự.
+        function computeLaneAssignment(picks) {
+            const allPos = ["Caesar", "Jungle", "Mid", "AD", "Support"];
+            const heroData = picks.map(name => allHeroes.find(h => h.name === name)).filter(Boolean);
+            const options = heroData.map(h => {
+                const opts = [h.pos];
+                if (h.flex && h.flex !== '—' && h.flex !== h.pos) opts.push(h.flex);
+                return { name: h.name, opts };
+            });
+            const posToHero = {};
+            function tryAssign(idx, visited) {
+                for (const p of options[idx].opts) {
+                    if (visited.has(p)) continue;
+                    visited.add(p);
+                    if (!(p in posToHero) || tryAssign(options.findIndex(o => o.name === posToHero[p]), visited)) {
+                        posToHero[p] = options[idx].name;
+                        return true;
+                    }
+                }
+                return false;
+            }
+            options.forEach((o, idx) => tryAssign(idx, new Set()));
+            const assignedHeroes = new Set(Object.values(posToHero));
+            return {
+                assignment: posToHero,
+                unassignedHeroes: picks.filter(name => !assignedHeroes.has(name)),
+                uncoveredPos: allPos.filter(p => !(p in posToHero))
+            };
+        }
+
+        function buildLaneCoverageWarning(picks) {
+            if (picks.length < 2) return null; // 0-1 tướng thì chưa đủ dữ liệu để kết luận
+            const { unassignedHeroes, uncoveredPos } = computeLaneAssignment(picks);
+            if (unassignedHeroes.length > 0) {
+                return { level: 1, text: `Trùng vai trò: <b>${unassignedHeroes.join(', ')}</b> không còn vị trí nào để xếp dù đã tính cả flex — đội đang thừa quân ở 1 vai trò và chắc chắn hụt 1 vị trí khác.` };
+            }
+            if (picks.length >= 5 && uncoveredPos.length > 0) {
+                return { level: 1, text: `Thiếu vị trí: đội hình đủ 5 tướng nhưng không ai phủ được <b>${uncoveredPos.join(', ')}</b>, dù đã tính cả flex.` };
+            }
+            return null;
+        }
+
         // --- BỘ MÁY CHẤM ĐIỂM GỢI Ý PICK (gộp counter + phối hợp + vị trí + nhu cầu đội hình + tier) ---
         function buildRankedPicks(available, myPicks, oppPicks, myOpenPos) {
             const trend = computeOppTrend(oppPicks);
@@ -1612,7 +1664,11 @@
         function renderTeamPlanSide(team, containerId) {
             const el = document.getElementById(containerId);
             if (!el) return;
-            el.innerHTML = buildTeamPlan(team).map(slot => {
+            const laneWarning = buildLaneCoverageWarning(simState[team].pick.filter(h => h));
+            const warningHtml = laneWarning
+                ? `<div class="mb-1.5 text-[11px] bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded px-2 py-1">⚠️ ${laneWarning.text}</div>`
+                : '';
+            el.innerHTML = warningHtml + buildTeamPlan(team).map(slot => {
                 const posLabel = `<span class="text-slate-500 w-16 flex-shrink-0 text-[11px]">${slot.pos}</span>`;
                 let body;
                 if (slot.status === 'picked') {
@@ -1905,8 +1961,13 @@
                 const sections = [];
                 const ranked = buildRankedPicks(available, myPicks, oppPicks, myOpenPos);
                 const warnings = buildCompWarnings(myPicks);
+                const laneWarning = buildLaneCoverageWarning(myPicks);
 
                 context = `<span class="text-slate-300">${myPicks.length > 0 ? `Đội bạn: <b class="text-blue-400">${myPicks.join(', ')}</b>. ` : ''}${oppPicks.length > 0 ? `Đối phương: <b class="text-rose-400">${oppPicks.join(', ')}</b>. ` : ''}Vị trí còn trống: <b class="text-cyan-400">${myOpenPos.join(', ') || 'Đã đủ 5 vị trí'}</b>.</span>`;
+
+                if (laneWarning) {
+                    sections.push(`<div class="mb-2">${priorityBadge[1]} <span class="text-rose-300 font-bold">${laneWarning.text}</span></div>`);
+                }
 
                 if (hasLastPick && oppPicks.length > 0) {
                     sections.push(`<div class="mb-2 text-emerald-300 font-bold">👑 Bạn giữ Last Pick — đối phương không còn lượt pick nào để phản đòn, cứ hard-counter thẳng, không cần giấu bài.</div>`);
@@ -2211,8 +2272,10 @@
                     ['Frontline', tools.has('frontline')], ['Engage', tools.has('engage')],
                     ['Peel', tools.has('peel')], ['Wave Clear', tools.has('waveclear')]
                 ];
+                const laneWarning = buildLaneCoverageWarning(t.picks);
                 return `<div class="mb-4">
                     <div class="font-bold ${t.color} mb-2">${t.name} <span class="text-slate-500 font-normal text-xs">(${t.picks.length}/5 tướng)</span></div>
+                    ${laneWarning ? `<div class="mb-2 text-xs bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded px-2 py-1.5">⚠️ ${laneWarning.text}</div>` : ''}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                         ${rows.map(([label, ok]) => `<div class="flex items-center gap-2">${ok ? '<span class="text-emerald-400 font-bold">✓</span>' : '<span class="text-rose-400 font-bold">✕</span>'}<span class="${ok ? 'text-slate-300' : 'text-rose-300'}">${label}</span></div>`).join('')}
                         <div class="flex items-center gap-2"><span class="text-slate-500">○</span><span class="text-slate-500">Objective Control (tự đánh giá)</span></div>
