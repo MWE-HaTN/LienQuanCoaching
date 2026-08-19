@@ -899,14 +899,18 @@
         let simStep = 0;
         let simHistory = []; // lịch sử thao tác để hỗ trợ Hoàn tác
         const simState = { blue: { ban: [null, null, null, null], pick: [null, null, null, null, null] }, red: { ban: [null, null, null, null], pick: [null, null, null, null, null] } };
+        // Ban Phase 2 (Ban 3-4) đội Đỏ đi trước, không phải Xanh — bù lại việc Xanh được "double pick"
+        // ở Pick Phase 1 (B,R,R,B,B,R: Xanh có 2 lượt pick liền nhau P2-P3). Thứ tự này khớp với chính
+        // Pick Phase 2 ngay sau nó (Red Pick 4 → Blue Pick 4 → ...) — đội đi trước ở Ban thì cũng đi
+        // trước ở Pick kế tiếp, đúng chuẩn draft pro (giống LoL/AOV).
         const draftSteps = [
             { team: 'blue', type: 'ban', index: 0, label: 'Blue Ban 1' }, { team: 'red', type: 'ban', index: 0, label: 'Red Ban 1' },
             { team: 'blue', type: 'ban', index: 1, label: 'Blue Ban 2' }, { team: 'red', type: 'ban', index: 1, label: 'Red Ban 2' },
             { team: 'blue', type: 'pick', index: 0, label: 'Blue Pick 1' }, { team: 'red', type: 'pick', index: 0, label: 'Red Pick 1' },
             { team: 'red', type: 'pick', index: 1, label: 'Red Pick 2' }, { team: 'blue', type: 'pick', index: 1, label: 'Blue Pick 2' },
             { team: 'blue', type: 'pick', index: 2, label: 'Blue Pick 3' }, { team: 'red', type: 'pick', index: 2, label: 'Red Pick 3' },
-            { team: 'blue', type: 'ban', index: 2, label: 'Blue Ban 3' }, { team: 'red', type: 'ban', index: 2, label: 'Red Ban 3' },
-            { team: 'blue', type: 'ban', index: 3, label: 'Blue Ban 4' }, { team: 'red', type: 'ban', index: 3, label: 'Red Ban 4' },
+            { team: 'red', type: 'ban', index: 2, label: 'Red Ban 3' }, { team: 'blue', type: 'ban', index: 2, label: 'Blue Ban 3' },
+            { team: 'red', type: 'ban', index: 3, label: 'Red Ban 4' }, { team: 'blue', type: 'ban', index: 3, label: 'Blue Ban 4' },
             { team: 'red', type: 'pick', index: 3, label: 'Red Pick 4' }, { team: 'blue', type: 'pick', index: 3, label: 'Blue Pick 4' },
             { team: 'red', type: 'pick', index: 4, label: 'Red Pick 5' }, { team: 'blue', type: 'pick', index: 4, label: 'Blue Pick 5' }
         ];
