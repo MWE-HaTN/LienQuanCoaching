@@ -193,7 +193,14 @@
                             <option value="red">Họ là Team Red</option>
                             <option value="blue">Họ là Team Blue</option>
                         </select>
-                        <input id="bo1-my-rank" onchange="setMyRank(this.value)" placeholder="Rank của mình" title="Rank của mình — dùng để so bậc với người cầm tướng bên kia" class="sm:w-44 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                        <input id="bo1-my-rank" onchange="setMyRank(this.value)" placeholder="Rank của mình" title="Rank của mình — dùng để so bậc với người cầm tướng bên kia" class="sm:w-36 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                        <select id="bo1-my-position" onchange="setMyPosition(this.value)" title="Vị trí mình cầm — thông thạo của mình chỉ áp cho lane này, lane khác là đồng đội" class="sm:w-40 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                            <option value="Caesar">Mình đánh Caesar</option>
+                            <option value="Jungle">Mình đánh Jungle</option>
+                            <option value="Mid">Mình đánh Mid</option>
+                            <option value="AD">Mình đánh AD</option>
+                            <option value="Support">Mình đánh Support</option>
+                        </select>
                     </div>
                     <div id="bo1-scout-result"></div>
                 </div>
@@ -959,23 +966,34 @@
             "Jinna": 206, "Azzen'Ka": 181, "Triệu Vân": 135, "Yue": 113, "Tulen": 89,
             "Krixi": 86, "Flowborn": 82, "Natalya": 11
         };
+        // Vị trí mình cầm trong giải. Thông thạo của mình CHỈ nói lên được lane của mình — tướng ở lane
+        // khác là đồng đội cầm, mình không có dữ liệu của họ. Áp thông thạo của mình lên cả 5 lane sẽ đẻ
+        // ra kết luận sai hẳn: từng phán "buộc phải cấm Nakroth vì Zuka/Zephys/Aoi mình chưa thông thạo",
+        // trong khi cả 3 đều là Caesar/Jungle — không phải việc của mình, và rừng nhà có thể chơi tốt.
+        let myPosition = localStorage.getItem('lqMyPosition') || 'Mid';
+
+        function isMyLane(hero) {
+            const h = allHeroes.find(x => x.name === hero);
+            if (!h) return false;
+            return h.pos === myPosition || (h.flex && h.flex !== '—' && h.flex === myPosition);
+        }
         // Ngưỡng chia theo bậc huy hiệu trong game (xanh lá ~300, xanh dương ~1000, tím ~2000, vàng trở lên).
+        // sortKey: mức tin cậy để xếp hạng. Lane đồng đội = chưa biết (1.5) — nằm giữa "mình chơi được" và
+        // "mình chơi dở", vì chưa có bằng chứng nào cả chứ không phải bằng chứng xấu.
         function masteryBand(hero) {
+            if (!isMyLane(hero)) return { level: null, sortKey: 1.5, inMyLane: false, label: 'lane đồng đội', cls: 'text-sky-300' };
             const m = myMastery[hero];
-            if (m === undefined) return { level: 0, label: 'chưa chơi', cls: 'text-slate-500' };
-            if (m >= 1000) return { level: 3, label: `thuần thục ${m}`, cls: 'text-amber-300' };
-            if (m >= 400) return { level: 2, label: `chơi được ${m}`, cls: 'text-emerald-300' };
-            if (m >= 100) return { level: 1, label: `mới biết ${m}`, cls: 'text-slate-400' };
-            return { level: 0, label: `gần như chưa chơi ${m}`, cls: 'text-slate-500' };
+            if (m === undefined) return { level: 0, sortKey: 0, inMyLane: true, label: 'mình chưa chơi', cls: 'text-rose-300' };
+            if (m >= 1000) return { level: 3, sortKey: 3, inMyLane: true, label: `thuần thục ${m}`, cls: 'text-amber-300' };
+            if (m >= 400) return { level: 2, sortKey: 2, inMyLane: true, label: `chơi được ${m}`, cls: 'text-emerald-300' };
+            if (m >= 100) return { level: 1, sortKey: 1, inMyLane: true, label: `mới biết ${m}`, cls: 'text-slate-400' };
+            return { level: 0, sortKey: 0, inMyLane: true, label: `mình gần như chưa chơi ${m}`, cls: 'text-rose-300' };
         }
 
         const scoutedTeams = {
             legends_vps: {
                 name: "Legends of VPS",
                 read: "Chênh lệch rank rất lớn trong đội (Đại Cao Thủ vs Đồng 3) — mắt xích rõ nhất trong 4 đội hay gặp. 2 người duy nhất cùng cầm Nakroth, nhiều khả năng đội dùng 1 tướng meta thật để gánh vị trí yếu hơn. Phần lớn đăng ký đa vị trí nên khó đoán lane — nên cấm/pick theo sức mạnh tướng hơn là theo giả định vị trí.",
-                priorityBans: [
-                    { hero: "Nakroth", reason: "tướng meta thật duy nhất của đội, 2 người cùng cầm" }
-                ],
                 players: [
                     { name: "Nguyễn Tấn Thịnh", rank: "Đại cao thủ 3", pos: ["Jungle", "Caesar", "Support"], heroes: ["Helen", "Arum", "Skud"] },
                     { name: "Nguyễn Xuân Trường", rank: "Đồng 3", pos: ["Jungle", "Caesar", "Mid"], heroes: ["Natalya", "Veera", "Nakroth"] },
@@ -987,10 +1005,6 @@
             nofear: {
                 name: "Nofear",
                 read: "Phần lớn tuyển thủ (kể cả đội trưởng đi Mid) ẩn hoàn toàn thông tin — tín hiệu bất thường nhất, nhiều khả năng có tài khoản phụ hoặc cố ý giấu bài. Đừng coi các vị trí thiếu dữ liệu là điểm yếu — nên draft thận trọng, giữ lại 1 lượt cấm để phản ứng theo diễn biến.",
-                priorityBans: [
-                    { hero: "Hayate", reason: "carry tuyến sau cực mạnh (S+, AD), top-ban bất kể đối thủ là ai" },
-                    { hero: "Ryoma", reason: "poke lane rất mạnh (S, Caesar) nếu chiếm lợi thế sớm" }
-                ],
                 players: [
                     { name: "Hồ Quyết Bảo", rank: null, pos: ["Mid"], heroes: [] },
                     { name: "Hoàng Ngọc Mai Hương", rank: "Kim cương 3", pos: ["AD"], heroes: ["Krizzix", "Raz", "Hayate"] },
@@ -1002,10 +1016,6 @@
             dung_im: {
                 name: "Tất cả đứng im",
                 read: "Mặt bằng rank thấp nhất trong các đội hay gặp. Kèo dễ thở nhất trên giấy, nhưng vẫn nên cấm 1-2 tướng meta thật thay vì bỏ hẳn lượt cấm.",
-                priorityBans: [
-                    { hero: "Nakroth", reason: "tướng meta thật rõ nhất của đội (S, Jungle)" },
-                    { hero: "Violet", reason: "tướng AD thật mạnh nhất đội (S+)" }
-                ],
                 players: [
                     { name: "Trần Thị Thảo", rank: "Đồng 3", pos: ["Mid"], heroes: ["Flowborn", "Tel'Annas", "Krixi"] },
                     { name: "Châu Minh Hoàng Kim Long", rank: "Đồng 3", pos: ["Caesar"], heroes: ["Arthur", "Flowborn", "Tel'Annas"] },
@@ -1017,11 +1027,6 @@
             mua_lua: {
                 name: "Biệt đội mùa lửa",
                 read: "Đội nguy hiểm nhất trong các đội hay gặp. Vị trí AD sở hữu tới 3 tướng S/S+ thật cùng lúc. Có tuyển thủ hiển thị rank thấp nhưng từng đạt hạng cao hơn hẳn — dấu hiệu smurf/derank, đừng đánh giá thấp theo rank hiện tại.",
-                priorityBans: [
-                    { hero: "Florentino", reason: "tướng chủ lực thật (S+, Caesar) của tuyển thủ nghi smurf" },
-                    { hero: "Aya", reason: "Support thật mạnh (S+), phối hợp tốt với Aoi/Nakroth/Capheny" },
-                    { hero: "Zata", reason: "tướng Mid mạnh nhất Meta Pool khớp lối chơi \"luyện thuần Mid\"" }
-                ],
                 players: [
                     { name: "Nguyễn Công Danh", rank: "Tinh anh 2", pos: ["AD"], heroes: ["Violet", "Elsu", "Moren"] },
                     // Zata từng bị ghi nhầm vào đây từ ghi chú "luyện thuần Mid" — bảng thông thạo thật chỉ
@@ -1082,6 +1087,13 @@
             try { localStorage.setItem('lqBo1OpponentSide', side); } catch (e) {}
             const sel = document.getElementById('bo1-opponent-side');
             if (sel) sel.value = side;
+            renderBo1ScoutResult();
+        }
+        function setMyPosition(pos) {
+            myPosition = pos;
+            try { localStorage.setItem('lqMyPosition', pos); } catch (e) {}
+            const sel = document.getElementById('bo1-my-position');
+            if (sel && sel.value !== pos) sel.value = pos;
             renderBo1ScoutResult();
         }
         function setMyRank(rank) {
@@ -1226,7 +1238,7 @@
                         };
                     })
                     .filter(c => c && c.rel)
-                    .sort((a, b) => (b.available - a.available) || (b.band.level - a.band.level) ||
+                    .sort((a, b) => (b.available - a.available) || (b.band.sortKey - a.band.sortKey) ||
                                      (b.fits - a.fits) || (tierRank(a.tier) - tierRank(b.tier)));
 
                 // Dùng chung đúng công thức với gợi ý cấm, chỉ cộng thêm phần phụ thuộc diễn biến.
@@ -1260,13 +1272,24 @@
             const priorityBans = live
                 .filter(t => t.inMetaPool && !t.outclassed && t.score >= Math.max(12, topScore * 0.45))
                 .slice(0, 3);
-            // Mối đe dọa mà mình KHÔNG cầm nổi bài trị nào thì không thể xử lý bằng pick — chỉ còn cách
-            // cấm. Đây là thứ đáng nói nhất mà bảng counter thuần lý thuyết không bao giờ chỉ ra được.
-            const mustBan = live.filter(t => t.inMetaPool &&
-                !t.counters.some(c => (c.available || c.mine) && c.band.level >= 2));
+            // "Buộc phải cấm" chỉ được kết luận khi CÓ bằng chứng là không đáp nổi. Counter nằm ở lane
+            // đồng đội thì mình không biết gì cả — không biết KHÁC với biết là không cầm được, nên không
+            // được gộp hai thứ đó lại rồi phán phải cấm (đúng lỗi cũ với Nakroth).
+            const answerable = t => t.counters.filter(c => c.available || c.mine);
+            const reliable = t => answerable(t).filter(c => !c.band.inMyLane || c.band.level >= 2);
+            const mustBan = live.filter(t => t.inMetaPool && reliable(t).length === 0);
+            // Đáp được, nhưng bài trị nằm hết ở lane đồng đội — phải hỏi lại đồng đội có cầm được không.
+            const needTeamCheck = live.filter(t => t.inMetaPool && reliable(t).length > 0 &&
+                !answerable(t).some(c => c.band.inMyLane && c.band.level >= 2))
+                .map(t => ({
+                    hero: t.hero,
+                    asks: reliable(t).filter(c => !c.band.inMyLane).slice(0, 4)
+                        .map(c => `${c.hero} (${(allHeroes.find(h => h.name === c.hero) || {}).pos || '?'})`)
+                }))
+                .filter(x => x.asks.length);
 
             return {
-                team, oppSide, mySide, threats, exposure, priorityBans, mustBan, myRankScore,
+                team, oppSide, mySide, threats, exposure, priorityBans, mustBan, needTeamCheck, myRankScore,
                 live,
                 picked: threats.filter(t => t.status === 'picked'),
                 neutralized: threats.filter(t => t.status === 'banned' || t.status === 'stolen' || t.status === 'closed')
@@ -1278,15 +1301,17 @@
             const scoreByHero = new Map();
             plan.live.concat(plan.picked).forEach(t => {
                 t.counters.forEach(c => {
-                    if (!c.available || c.band.level === 0) return;
+                    // Loại tướng ở LANE MÌNH mà mình không cầm nổi. Tướng lane đồng đội thì vẫn giữ, chỉ
+                    // ghi rõ là chưa xác nhận — không được im lặng bỏ đi chỉ vì mình không có số liệu.
+                    if (!c.available || (c.band.inMyLane && c.band.level === 0)) return;
                     const e = scoreByHero.get(c.hero) || { hero: c.hero, band: c.band, tier: c.tier, fits: c.fits, vs: [] };
                     e.vs.push(t.hero);
                     scoreByHero.set(c.hero, e);
                 });
             });
             return [...scoreByHero.values()]
-                .sort((a, b) => (b.vs.length - a.vs.length) || (b.band.level - a.band.level) || (tierRank(a.tier) - tierRank(b.tier)))
-                .slice(0, 5);
+                .sort((a, b) => (b.vs.length - a.vs.length) || (b.band.sortKey - a.band.sortKey) || (tierRank(a.tier) - tierRank(b.tier)))
+                .slice(0, 6);
         }
 
         function bo1CounterChips(counters) {
@@ -1295,12 +1320,12 @@
             // không được lọc mất chung với tướng bị đối phương/cấm lấy đi.
             const usable = counters.filter(c => c.available || c.mine);
             if (!usable.length) return '<span class="text-rose-300 text-xs">không còn counter nào trong Meta Pool — phải xử lý bằng lối chơi</span>';
-            const playable = usable.filter(c => c.band.level > 0);
+            const playable = usable.filter(c => !c.band.inMyLane || c.band.level > 0);
             const list = playable.length ? playable : usable;
-            const head = playable.length ? '' : '<span class="text-rose-300 text-xs block mb-1">counter còn lại đều là tướng mình chưa chơi:</span>';
+            const head = playable.length ? '' : '<span class="text-rose-300 text-xs block mb-1">counter còn lại đều ở lane mình mà mình chưa chơi:</span>';
             return head + list.slice(0, 4).map(c => {
                 const cls = c.mine ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                    : c.band.level === 0 ? 'bg-slate-800 border-slate-700 text-slate-500'
+                    : (c.band.inMyLane && c.band.level === 0) ? 'bg-slate-800 border-slate-700 text-slate-500'
                     : c.fits ? 'bg-slate-700 border-slate-600 text-slate-200'
                     : 'bg-slate-800 border-slate-700 text-slate-500';
                 const mark = c.mine ? ' ✓' : (c.fits ? '' : ' (hết chỗ)');
@@ -1314,7 +1339,7 @@
             if (!el) return;
             const plan = buildBo1CounterPlan();
             if (!plan) { el.innerHTML = ''; return; }
-            const { team, threats, exposure, live, picked, neutralized, priorityBans, mustBan } = plan;
+            const { team, threats, exposure, live, picked, neutralized, priorityBans, mustBan, needTeamCheck } = plan;
             const bestPicks = bo1BestCounterPicks(plan);
 
             const threatRow = t => `
@@ -1348,9 +1373,17 @@
                         </div>
                     </div>` : ''}
 
+                    ${needTeamCheck.length ? `
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-sky-500">
+                        <b class="text-sky-400">Cần xác nhận với đồng đội (${needTeamCheck.length}):</b>
+                        <div class="text-slate-300 mt-1 space-y-1">
+                            ${needTeamCheck.slice(0, 5).map(x => `<div>• <b class="text-white">${x.hero}</b> <span class="text-slate-400 text-xs">— bài trị nằm ở lane khác: ${x.asks.join(', ')}. Mình đánh ${myPosition} nên không tự đáp được, hỏi đồng đội có cầm được không.</span></div>`).join('')}
+                        </div>
+                    </div>` : ''}
+
                     ${bestPicks.length ? `
                     <div class="p-3 bg-slate-800 rounded border-l-4 border-emerald-500">
-                        <b class="text-emerald-400">Nên tự pick (bài trị mình cầm được):</b>
+                        <b class="text-emerald-400">Nên pick để trị (${myPosition} là mình, còn lại là đồng đội):</b>
                         <div class="text-slate-300 mt-1 space-y-1">
                             ${bestPicks.map(p => `<div>• <b class="text-white">${p.hero}</b> <span class="${p.band.cls} text-xs">${p.band.label}</span> <span class="text-slate-400 text-xs">— trị được ${p.vs.join(', ')}${p.fits ? '' : ' (đội mình hết chỗ xếp)'}</span></div>`).join('')}
                         </div>
@@ -3027,6 +3060,7 @@
         renderSeriesFormatToggle();
         populateBo1OpponentSelect();
         setMyRank(myRank);
+        setMyPosition(myPosition);
         setBo1OpponentSide(bo1OpponentSide);
 
         // Khôi phục draft đang dở (nếu có) trước khi render simulator
