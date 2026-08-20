@@ -988,6 +988,35 @@
         // trong khi cả 3 đều là Caesar/Jungle — không phải việc của mình, và rừng nhà có thể chơi tốt.
         let myPosition = localStorage.getItem('lqMyPosition') || 'Mid';
 
+        // --- ĐỘI MÌNH ---
+        // Bịt đúng lỗ hổng "lane đồng đội = chưa biết gì": có pool của đồng đội thì mới trả lời được
+        // "đội mình có ai đáp nổi tướng này không", thay vì phải hỏi tay từng lượt.
+        // Cột "sợ tướng nào nhất" là dữ liệu KHÔNG suy ra được từ tier/counter — tự đội thừa nhận điểm
+        // yếu. Một tướng cả 2 người cùng ngại (Florentino) đáng cấm hơn hẳn một tướng S+ mà đội không ngại.
+        // Tên vị trí trong sheet (Top/SP/Ad) quy về đúng chuẩn của app (Caesar/Support/AD).
+        const myTeam = {
+            players: [
+                { ingame: "Poppyi", isMe: true, pos1: "Mid", mains1: [], pos2: null, mains2: [], fears: [] },
+                { ingame: "HuyVuxDay", pos1: "AD", mains1: ["Tel'Annas", "Violet", "Valhein"], pos2: "Support", mains2: ["Toro", "Arum", "Gildur"], fears: ["Florentino", "Zata", "Volkath", "Billow"] },
+                { ingame: "NinTiHan", pos1: "Mid", mains1: ["Veera", "Aleister", "Lauriel"], pos2: "Caesar", mains2: ["Errol", "Zephys", "Omen"], fears: ["Florentino", "Nakroth"] },
+                { ingame: "ษTBGษXanä⁵⁰⁷", pos1: null, mains1: [], pos2: null, mains2: [], fears: [] },
+                { ingame: "ThiSĩĐiMid", pos1: null, mains1: [], pos2: null, mains2: [], fears: [] },
+                { ingame: "Gàrán29", pos1: null, mains1: [], pos2: null, mains2: [], fears: [] }
+            ]
+        };
+        // Ai trong đội nhận tướng này là tủ (kèm vị trí họ cầm nó) — dùng để biết đội có đáp được không.
+        function myTeamOwners(heroName) {
+            const out = [];
+            myTeam.players.forEach(p => {
+                if ((p.mains1 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos1, isMe: !!p.isMe });
+                else if ((p.mains2 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos2, isMe: !!p.isMe });
+            });
+            return out;
+        }
+        function myTeamFears(heroName) {
+            return myTeam.players.filter(p => (p.fears || []).includes(heroName));
+        }
+
         function isMyLane(hero) {
             const h = allHeroes.find(x => x.name === hero);
             if (!h) return false;
@@ -997,13 +1026,22 @@
         // sortKey: mức tin cậy để xếp hạng. Lane đồng đội = chưa biết (1.5) — nằm giữa "mình chơi được" và
         // "mình chơi dở", vì chưa có bằng chứng nào cả chứ không phải bằng chứng xấu.
         function masteryBand(hero) {
-            if (!isMyLane(hero)) return { level: null, sortKey: 1.5, inMyLane: false, label: 'lane đồng đội', cls: 'text-sky-300' };
+            if (!isMyLane(hero)) {
+                // Đồng đội tự nhận là tướng tủ = đã xác nhận đội đáp được, khác hẳn "chưa ai xác nhận".
+                const owners = myTeamOwners(hero);
+                if (owners.length) {
+                    return { level: null, sortKey: 2.2, inMyLane: false, teamOwned: true, owners,
+                             label: `${owners.map(o => o.ingame).join('/')} cầm`, cls: 'text-emerald-300' };
+                }
+                return { level: null, sortKey: 1.5, inMyLane: false, teamOwned: false, owners: [],
+                         label: 'lane đồng đội — chưa ai xác nhận', cls: 'text-sky-300' };
+            }
             const m = myMastery[hero];
-            if (m === undefined) return { level: 0, sortKey: 0, inMyLane: true, label: 'mình chưa chơi', cls: 'text-rose-300' };
-            if (m >= 1000) return { level: 3, sortKey: 3, inMyLane: true, label: `thuần thục ${m}`, cls: 'text-amber-300' };
-            if (m >= 400) return { level: 2, sortKey: 2, inMyLane: true, label: `chơi được ${m}`, cls: 'text-emerald-300' };
-            if (m >= 100) return { level: 1, sortKey: 1, inMyLane: true, label: `mới biết ${m}`, cls: 'text-slate-400' };
-            return { level: 0, sortKey: 0, inMyLane: true, label: `mình gần như chưa chơi ${m}`, cls: 'text-rose-300' };
+            if (m === undefined) return { level: 0, sortKey: 0, inMyLane: true, teamOwned: false, owners: [], label: 'mình chưa chơi', cls: 'text-rose-300' };
+            if (m >= 1000) return { level: 3, sortKey: 3, inMyLane: true, teamOwned: false, owners: [], label: `thuần thục ${m}`, cls: 'text-amber-300' };
+            if (m >= 400) return { level: 2, sortKey: 2, inMyLane: true, teamOwned: false, owners: [], label: `chơi được ${m}`, cls: 'text-emerald-300' };
+            if (m >= 100) return { level: 1, sortKey: 1, inMyLane: true, teamOwned: false, owners: [], label: `mới biết ${m}`, cls: 'text-slate-400' };
+            return { level: 0, sortKey: 0, inMyLane: true, teamOwned: false, owners: [], label: `mình gần như chưa chơi ${m}`, cls: 'text-rose-300' };
         }
 
         const scoutedTeams = {
@@ -1323,20 +1361,24 @@
             // đồng đội thì mình không biết gì cả — không biết KHÁC với biết là không cầm được, nên không
             // được gộp hai thứ đó lại rồi phán phải cấm (đúng lỗi cũ với Nakroth).
             const answerable = t => t.counters.filter(c => c.available || c.mine);
-            const reliable = t => answerable(t).filter(c => !c.band.inMyLane || c.band.level >= 2);
-            const mustBan = live.filter(t => t.inMetaPool && reliable(t).length === 0);
-            // Đáp được, nhưng bài trị nằm hết ở lane đồng đội — phải hỏi lại đồng đội có cầm được không.
-            const needTeamCheck = live.filter(t => t.inMetaPool && reliable(t).length > 0 &&
-                !answerable(t).some(c => c.band.inMyLane && c.band.level >= 2))
+            // ĐÃ XÁC NHẬN đáp được: mình cầm tốt ở lane mình, hoặc 1 đồng đội nhận là tướng tủ.
+            const confirmed = t => answerable(t).filter(c => (c.band.inMyLane && c.band.level >= 2) || c.band.teamOwned);
+            // CHƯA RÕ: ở lane đồng đội nhưng chưa ai điền tủ — chưa biết, không phải biết là không được.
+            const unknown = t => answerable(t).filter(c => !c.band.inMyLane && !c.band.teamOwned);
+            const mustBan = live.filter(t => t.inMetaPool && confirmed(t).length === 0 && unknown(t).length === 0);
+            const needTeamCheck = live.filter(t => t.inMetaPool && confirmed(t).length === 0 && unknown(t).length > 0)
                 .map(t => ({
                     hero: t.hero,
-                    asks: reliable(t).filter(c => !c.band.inMyLane).slice(0, 4)
+                    asks: unknown(t).slice(0, 4)
                         .map(c => `${c.hero} (${(allHeroes.find(h => h.name === c.hero) || {}).pos || '?'})`)
                 }))
                 .filter(x => x.asks.length);
+            // Tướng cả đội tự nhận ngại — dữ liệu này không suy ra được từ tier/counter.
+            const fearedThreats = live.filter(t => myTeamFears(t.hero).length > 0)
+                .map(t => ({ hero: t.hero, by: myTeamFears(t.hero).map(p => p.ingame) }));
 
             return {
-                team, oppSide, mySide, threats, exposure, priorityBans, mustBan, needTeamCheck, myRankScore,
+                team, oppSide, mySide, threats, exposure, priorityBans, mustBan, needTeamCheck, fearedThreats, myRankScore,
                 live,
                 picked: threats.filter(t => t.status === 'picked'),
                 neutralized: threats.filter(t => t.status === 'banned' || t.status === 'stolen' || t.status === 'closed')
@@ -1386,7 +1428,7 @@
             if (!el) return;
             const plan = buildBo1CounterPlan();
             if (!plan) { el.innerHTML = ''; return; }
-            const { team, threats, exposure, live, picked, neutralized, priorityBans, mustBan, needTeamCheck } = plan;
+            const { team, threats, exposure, live, picked, neutralized, priorityBans, mustBan, needTeamCheck, fearedThreats } = plan;
             const bestPicks = bo1BestCounterPicks(plan);
 
             const threatRow = t => `
@@ -1417,6 +1459,14 @@
                         <b class="text-rose-300">Buộc phải cấm — mình không cầm nổi bài trị (${mustBan.length}):</b>
                         <div class="text-slate-300 mt-1 space-y-1">
                             ${mustBan.slice(0, 4).map(t => `<div>• <b class="text-white">${t.hero}</b> <span class="text-slate-400 text-xs">— counter là ${t.counters.filter(c => c.available || c.mine).map(c => c.hero).join('/') || 'không còn ai'}, đều là tướng mình chưa đủ thông thạo. Không thể đáp bằng pick.</span></div>`).join('')}
+                        </div>
+                    </div>` : ''}
+
+                    ${fearedThreats.length ? `
+                    <div class="p-3 bg-rose-950/40 rounded border-l-4 border-rose-500">
+                        <b class="text-rose-300">Đội mình tự nhận ngại (${fearedThreats.length}) — ưu tiên cấm cao nhất:</b>
+                        <div class="text-slate-300 mt-1 space-y-1">
+                            ${fearedThreats.map(f => `<div>• <b class="text-white">${f.hero}</b> <span class="text-slate-400 text-xs">— ${f.by.join(', ')} tự nhận ngại${f.by.length > 1 ? ' (cả nhiều người, không ai gánh được)' : ''}. Họ chơi được tướng này.</span></div>`).join('')}
                         </div>
                     </div>` : ''}
 
@@ -2143,6 +2193,15 @@
                 // 5. Sức mạnh meta — chỉ còn trống qua flex thì hạ tier trước khi tính, cùng quy ước với buildRankedPicks
                 const effTier = (!openForPos && openForFlex) ? degradeTier(d.tier) : d.tier;
                 score += (7 - tierRank(effTier)) * 4;
+
+                // 5b. Đội mình TỰ NHẬN ngại tướng này. Không suy ra được từ tier/counter, và đúng ở mọi
+                // định dạng (Bo1/Bo3/Bo5) vì đây là điểm yếu của đội mình chứ không phụ thuộc đối thủ.
+                // Càng nhiều người cùng ngại thì cấm càng đáng — cả đội ngại nghĩa là không ai gánh được.
+                const fearedBy = myTeamFears(d.hero);
+                if (fearedBy.length > 0) {
+                    score += fearedBy.length * 14;
+                    reasons.push(`😰 ${fearedBy.map(p => p.ingame).join(', ')} tự nhận ngại tướng này`);
+                }
 
                 // 6. Trinh sát Bo1: cộng điểm theo mức nguy hiểm ĐÃ TÍNH của tướng đó (rank người cầm +
                 // tier + số người cùng cầm), không phải theo 1 danh sách viết tay. Nhờ vậy tướng tủ của
