@@ -727,9 +727,11 @@
             renderDraft();
             renderMeta();
         }
-        // Bộ lọc Tier/Vị trí/tìm kiếm chạy song song với lọc combo, nên có thể giấu bớt thành viên combo
-        // (vd đang bật "Chỉ S+" thì Capheny hạng A biến mất) — phải nói rõ chứ đừng để banner liệt kê
-        // đủ tên mà bảng lại thiếu.
+        // Combo giờ bỏ qua Tier/Vị trí/tìm kiếm (xem renderDraft/renderMeta) nên phần "hidden" dưới đây
+        // chỉ còn xảy ra khi tên trong sync KHÔNG có thật trong mảng đang lọc — ở Draft Board đó là 1
+        // tướng ngoài Meta Pool (draftData chỉ có ~129 tướng curated), còn Meta Snapshot phủ đủ 129 tướng
+        // nên gần như không bao giờ thiếu. Giữ lại cảnh báo này vì đó là lỗi dữ liệu thật, không phải do
+        // giao 2 bộ lọc như trước.
         function renderSyncBanner(elId, shownNames) {
             const el = document.getElementById(elId);
             if (!el) return;
@@ -810,11 +812,17 @@
             const search = document.getElementById('search-hero').value.toLowerCase();
             const pos = document.getElementById('filter-pos').value;
             const tier = document.getElementById('filter-tier').value;
-            const filtered = draftData.filter(d =>
-                (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
-                (!pos || d.pos === pos) && (!tier || d.tier === tier) &&
-                (!activeSyncFilter || activeSyncFilter.list.includes(d.hero))
-            );
+            // Combo BỎ QUA tìm kiếm/vị trí/tier chứ không giao (AND) với chúng — 1 combo gần như luôn
+            // gồm tướng khác vị trí nhau (Support+Mid+AD...), nên giao filter kiểu cũ gần như lần nào
+            // cũng che mất 1-2 thành viên (đã bị bắt: lọc Support rồi bấm combo của Toro chỉ còn 1/3).
+            // Combo là 1 chế độ xem riêng — bấm 🔗 nghĩa là "chỉ cho tôi xem đúng combo này", các bộ lọc
+            // khác vẫn giữ nguyên giá trị (không bị xóa) để khi Xóa lọc combo thì quay lại đúng như cũ.
+            const filtered = activeSyncFilter
+                ? draftData.filter(d => activeSyncFilter.list.includes(d.hero))
+                : draftData.filter(d =>
+                    (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
+                    (!pos || d.pos === pos) && (!tier || d.tier === tier)
+                );
             renderSyncBanner('draft-sync-banner', filtered.map(d => d.hero));
             if(filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="14" class="text-center p-8 text-slate-500">Không tìm thấy tướng phù hợp.</td></tr>`;
@@ -858,13 +866,15 @@
             const pos = document.getElementById('meta-filter-pos').value;
             const tier = document.getElementById('meta-filter-tier').value;
             const minTier = document.getElementById('meta-filter-min-tier').value;
-            const filtered = fullMetaData.filter(d =>
-                (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
-                (!pos || d.pos === pos) &&
-                (!tier || d.tier === tier) &&
-                (!minTier || (d.tier !== "—" && tierRank(d.tier) <= tierRank(minTier))) &&
-                (!activeSyncFilter || activeSyncFilter.list.includes(d.hero))
-            );
+            // Cùng lý do như renderDraft(): combo bỏ qua các bộ lọc khác thay vì giao (AND) với chúng.
+            const filtered = activeSyncFilter
+                ? fullMetaData.filter(d => activeSyncFilter.list.includes(d.hero))
+                : fullMetaData.filter(d =>
+                    (d.hero.toLowerCase().includes(search) || d.pos.toLowerCase().includes(search)) &&
+                    (!pos || d.pos === pos) &&
+                    (!tier || d.tier === tier) &&
+                    (!minTier || (d.tier !== "—" && tierRank(d.tier) <= tierRank(minTier)))
+                );
             document.getElementById('meta-count').innerText = filtered.length;
             renderSyncBanner('meta-sync-banner', filtered.map(d => d.hero));
             if (filtered.length === 0) {
