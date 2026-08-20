@@ -1094,7 +1094,29 @@
                     { name: "Nguyễn Sỹ Kiệt", rank: "Đại cao thủ 3", pos: ["Jungle"], heroes: [] },
                     { name: "Nguyễn Thị Cúc", rank: "Bạch kim 1", pos: ["Support"], heroes: [] },
                     { name: "Lê Ninh Sỹ", rank: "Tinh anh 3", pos: ["Caesar"], heroes: ["Violet", "Skud", "Ryoma"] }
-                ]
+                ],
+                // Đối sách chỉ được chứa thứ KHÔNG tính ra được: ý đồ, cái giá phải trả, và điều kiện đổi
+                // kế hoạch. Mọi con số (điểm cấm, tier, ai counter ai) vẫn để các bảng bên dưới tự tính —
+                // viết tay số liệu song song chính là cách danh sách priorityBans cũ từng nói sai.
+                gameplan: {
+                    title: "Bóp cặp bot",
+                    why: "Hai người rank thấp nhất đội họ nằm đúng cùng một lane (Hỗ trợ Bạch kim 1, AD Kim cương 3), và AD của họ chỉ lộ được ĐÚNG 1 tướng đúng vai là Hayate — Krizzix là hỗ trợ, Raz là mid. Đây là mắt xích mỏng nhất trong 4 đội hay gặp.",
+                    bans: [
+                        { hero: "Hayate", why: "Tướng AD duy nhất họ đã lộ — cấm là ép người Kim cương 3 vào tướng chưa ai thấy họ chơi. Thêm một lý do: Hayate khắc chế một chiều Tel'Annas của HuyVuxDay, để họ có nó là mình tự mất nửa pool AD." },
+                        { hero: "Raz", why: "Tướng mạnh nhất họ đã lộ, và bài trị duy nhất của mình là Yue (thông thạo 113) — đúng chỗ dễ vỡ nhất của mình." },
+                        { hero: "Dolia", why: "Lượt cấm phục vụ kế hoạch bot chứ không cấm theo tier: hỗ trợ bảo kê tốt nhất pool, lại sync thẳng với Hayate. Với hỗ trợ Bạch kim 1 chưa lộ bài thì Dolia là con dễ chọn nhất và cũng là con cứu họ khỏi bị dive — cắt đường lùi." }
+                    ],
+                    banHold: "Giữ lượt cấm thứ 4 tới Ban 3-4. Mid và Jungle của họ ẩn hoàn toàn, và các tướng mạnh ngoài pool đã soi đều đang bị hạ điểm vì khả năng cấm hụt cao — đừng tiêu sớm.",
+                    picks: [
+                        { hero: "Toro", who: "Gàrán29", why: "Trục của kế hoạch: hỗ trợ spike Early/Mid, win-condition dive — gần như là con duy nhất trong pool ép được bot từ sớm. Cả bot còn lại đều Mid/Late, tức cho đối thủ đúng thứ họ cần là thời gian. Sync sẵn với Yue của mình." },
+                        { hero: "Violet", who: "HuyVuxDay", why: "Spike Mid, sớm hơn Tel'Annas, và không bị Hayate khắc. Caesar của họ (Lê Ninh Sỹ) cũng khai Violet nên đây là con phải PICK SỚM chứ không phải đem đi cấm." }
+                    ],
+                    planB: {
+                        trigger: ["Alice", "Y'bneth"],
+                        then: "Toro bị hai con này khắc chế một chiều. Nếu họ lấy trước một trong hai thì bỏ hẳn hướng dive: Gàrán29 chuyển sang Alice (cũng là tủ của họ) và cả đội đánh chậm theo trục Violet. Chốt trước, đừng ứng biến trong 40 giây."
+                    },
+                    risk: "Rừng của họ Đại cao thủ 3, trên mình 2.2 bậc và pool ẩn hoàn toàn. Mọi pha dive bot đều là lời mời người mạnh nhất đội họ xuống bắt lẻ. Ép bot bằng Hỗ trợ + Mid, còn Xanä giữ rừng an toàn và ăn mục tiêu bên kia bản đồ — 'hủy diệt bot' ở đây là ép mất nhịp và mất trụ sớm, không phải cắm chốt đánh 5v5 dưới đó."
+                }
             },
             dung_im: {
                 name: "Tất cả đứng im",
@@ -1290,6 +1312,54 @@
             return map;
         }
 
+        // --- ĐỐI SÁCH VIẾT SẴN, ĐỐI CHIẾU LẠI VỚI DIỄN BIẾN THẬT ---
+        // Đối sách viết tay có đúng một cách chết: nó vẫn bảo "cấm Hayate" trong khi Hayate bị cấm từ lượt
+        // trước, hoặc bảo "pick Toro" khi đối phương vừa lấy Toro. Nên mỗi bước phải tra lại trạng thái
+        // thật của tướng đó rồi tự đánh dấu xong/hỏng, chứ không in nguyên văn ra màn hình.
+        function gameplanStepState(hero, mySide, oppSide) {
+            const bans = [...simState.blue.ban, ...simState.red.ban].filter(Boolean);
+            if (bans.includes(hero)) return { key: 'banned', label: 'đã bị cấm', cls: 'text-slate-500 line-through' };
+            if (simState[mySide].pick.includes(hero)) return { key: 'mine', label: 'mình đã lấy ✓', cls: 'text-emerald-300' };
+            if (simState[oppSide].pick.includes(hero)) return { key: 'lost', label: 'HỌ ĐÃ LẤY MẤT', cls: 'text-rose-300 font-bold' };
+            if (seriesLocked.includes(hero)) return { key: 'locked', label: 'đã khoá theo series', cls: 'text-slate-500 line-through' };
+            return { key: 'open', label: 'còn', cls: 'text-slate-200' };
+        }
+        // Tên phải khác renderGameplan() của tab "Cách Vận Hành" — hai hàm cùng tên thì cái khai báo sau
+        // nuốt cái trước và khối này biến mất im lặng, không báo lỗi gì.
+        function renderOpponentGameplan(team, mySide, oppSide) {
+            const g = team.gameplan;
+            if (!g) return '';
+            const step = (s, verb) => {
+                const st = gameplanStepState(s.hero, mySide, oppSide);
+                const d = draftData.find(x => x.hero === s.hero);
+                return `<div class="py-1 border-b border-slate-700/40 last:border-0">
+                    <div class="flex flex-wrap items-baseline gap-x-2">
+                        <span class="text-slate-500 text-[10px] uppercase heading">${verb}</span>
+                        <b class="${st.cls}">${s.hero}</b>
+                        ${d ? `<span class="${getTierClass(d.tier)} text-[10px] font-bold">${d.tier}</span>` : ''}
+                        ${s.who ? `<span class="text-slate-500 text-xs">${s.who}</span>` : ''}
+                        <span class="text-[10px] ${st.key === 'open' ? 'text-slate-500' : st.cls}">${st.label}</span>
+                    </div>
+                    <div class="text-xs text-slate-400 leading-snug mt-0.5">${s.why}</div>
+                </div>`;
+            };
+            // Điều kiện đổi kế hoạch phải hét lên đúng lúc nó xảy ra, không phải nằm im chờ người đọc nhớ.
+            const tripped = (g.planB ? g.planB.trigger : []).filter(h => simState[oppSide].pick.includes(h));
+            return `<div class="p-3 bg-amber-950/30 rounded border-l-4 border-amber-500">
+                <b class="text-amber-300">⚔️ Đối sách: ${g.title}</b>
+                <p class="text-slate-300 text-xs mt-1">${g.why}</p>
+                ${tripped.length ? `<div class="mt-2 p-2 bg-rose-950/50 border border-rose-500/50 rounded">
+                    <b class="text-rose-300">⚠️ ĐỔI KẾ HOẠCH — họ đã lấy ${tripped.join(', ')}:</b>
+                    <span class="text-slate-300 text-xs">${g.planB.then}</span>
+                </div>` : ''}
+                <div class="mt-2">${g.bans.map(s => step(s, 'cấm')).join('')}</div>
+                ${g.banHold ? `<p class="text-xs text-slate-400 mt-1.5">🕓 ${g.banHold}</p>` : ''}
+                <div class="mt-2">${g.picks.map(s => step(s, 'pick')).join('')}</div>
+                ${g.planB && !tripped.length ? `<p class="text-xs text-amber-200/70 mt-1.5">🔀 Điều kiện đổi kế hoạch: nếu họ lấy <b>${g.planB.trigger.join(' hoặc ')}</b> — ${g.planB.then}</p>` : ''}
+                ${g.risk ? `<p class="text-xs text-rose-200/80 mt-1.5">⚠️ Cái giá phải trả: ${g.risk}</p>` : ''}
+            </div>`;
+        }
+
         // --- ĐỐI SÁCH ĐỘNG CHO BO1 ---
         // Đối sách viết cứng kiểu "vs X → pick Y" sai ngay khi draft bắt đầu chạy: X có thể đã bị cấm,
         // Y có thể đã bị lấy mất, hoặc đối phương đã kín vị trí của X nên X hết nguy hiểm. Nên tính lại
@@ -1464,7 +1534,7 @@
             if (!el) return;
             const plan = buildBo1CounterPlan();
             if (!plan) { el.innerHTML = ''; return; }
-            const { team, threats, exposure, live, picked, neutralized, priorityBans, mustBan, needTeamCheck, shakyOnly, fearedThreats } = plan;
+            const { team, mySide, oppSide, threats, exposure, live, picked, neutralized, priorityBans, mustBan, needTeamCheck, shakyOnly, fearedThreats } = plan;
             const bestPicks = bo1BestCounterPicks(plan);
 
             const threatRow = t => `
@@ -1482,6 +1552,8 @@
             el.innerHTML = `
                 <div class="space-y-2 text-sm">
                     <div class="p-3 bg-slate-800 rounded border-l-4 border-sky-500"><b class="text-sky-400">Nhận định:</b> <span class="text-slate-300">${team.read}</span></div>
+
+                    ${renderOpponentGameplan(team, mySide, oppSide)}
 
                     <div class="p-3 bg-slate-800 rounded border-l-4 border-rose-500"><b class="text-rose-400">Ưu tiên cấm trước trận (tính từ dữ liệu trinh sát):</b>
                         ${priorityBans.length ? `<ul class="text-slate-300 mt-1 space-y-1">
