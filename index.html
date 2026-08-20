@@ -996,20 +996,21 @@
         // Tên vị trí trong sheet (Top/SP/Ad) quy về đúng chuẩn của app (Caesar/Support/AD).
         const myTeam = {
             players: [
-                { ingame: "Poppyi", isMe: true, pos1: "Mid", mains1: [], pos2: null, mains2: [], fears: [] },
+                { ingame: "Poppyi", isMe: true, pos1: "Mid", mains1: ["Azzen'Ka", "Goverra", "Kahlii"], pos2: "AD", mains2: ["Tel'Annas", "Laville", "Violet"], fears: ["Zata", "Billow"] },
                 { ingame: "HuyVuxDay", pos1: "AD", mains1: ["Tel'Annas", "Violet", "Valhein"], pos2: "Support", mains2: ["Toro", "Arum", "Gildur"], fears: ["Florentino", "Zata", "Volkath", "Billow"] },
-                { ingame: "NinTiHan", pos1: "Mid", mains1: ["Veera", "Aleister", "Lauriel"], pos2: "Caesar", mains2: ["Errol", "Zephys", "Omen"], fears: ["Florentino", "Nakroth"] },
-                { ingame: "ษTBGษXanä⁵⁰⁷", pos1: null, mains1: [], pos2: null, mains2: [], fears: [] },
-                { ingame: "ThiSĩĐiMid", pos1: null, mains1: [], pos2: null, mains2: [], fears: [] },
-                { ingame: "Gàrán29", pos1: null, mains1: [], pos2: null, mains2: [], fears: [] }
+                { ingame: "NinTiHan", sub: true, pos1: "Mid", mains1: ["Veera", "Aleister", "Lauriel"], pos2: "Caesar", mains2: ["Errol", "Zephys", "Omen"], fears: ["Florentino", "Nakroth"] },
+                { ingame: "ษTBGษXanä⁵⁰⁷", pos1: "Jungle", mains1: ["Triệu Vân"], pos2: "Caesar", mains2: ["Bolt Baron"], fears: [] },
+                { ingame: "ThiSĩĐiMid", pos1: "Caesar", mains1: ["Volkath", "Maloch"], pos2: "Mid", mains2: ["Lauriel"], fears: [] },
+                { ingame: "Gàrán29", pos1: "Support", mains1: ["Grakk", "Toro", "Alice"], pos2: "AD", mains2: ["Hayate"], fears: [] }
             ]
         };
         // Ai trong đội nhận tướng này là tủ (kèm vị trí họ cầm nó) — dùng để biết đội có đáp được không.
         function myTeamOwners(heroName) {
             const out = [];
             myTeam.players.forEach(p => {
-                if ((p.mains1 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos1, isMe: !!p.isMe });
-                else if ((p.mains2 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos2, isMe: !!p.isMe });
+                if ((p.mains1 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos1, isMe: !!p.isMe, sub: !!p.sub });
+                // Mình đã chốt đánh Mid trong giải nên pool vị trí phụ của mình không tính là đội đáp được.
+                else if (!p.isMe && (p.mains2 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos2, isMe: false, sub: !!p.sub });
             });
             return out;
         }
@@ -1030,8 +1031,11 @@
                 // Đồng đội tự nhận là tướng tủ = đã xác nhận đội đáp được, khác hẳn "chưa ai xác nhận".
                 const owners = myTeamOwners(hero);
                 if (owners.length) {
-                    return { level: null, sortKey: 2.2, inMyLane: false, teamOwned: true, owners,
-                             label: `${owners.map(o => o.ingame).join('/')} cầm`, cls: 'text-emerald-300' };
+                    // Chỉ dự bị cầm thì trong Bo1 không thay người được — hạ độ tin cậy và ghi rõ.
+                    const allSub = owners.every(o => o.sub);
+                    return { level: null, sortKey: allSub ? 1.8 : 2.2, inMyLane: false, teamOwned: true, subOnly: allSub, owners,
+                             label: `${owners.map(o => o.ingame + (o.sub ? ' (dự bị)' : '')).join('/')} cầm`,
+                             cls: allSub ? 'text-teal-400' : 'text-emerald-300' };
                 }
                 return { level: null, sortKey: 1.5, inMyLane: false, teamOwned: false, owners: [],
                          label: 'lane đồng đội — chưa ai xác nhận', cls: 'text-sky-300' };
