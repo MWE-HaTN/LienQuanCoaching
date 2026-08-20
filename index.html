@@ -163,10 +163,14 @@
 
             <!-- Ràng buộc Series (Bo1/Bo3/Bo5) -->
             <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-6">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <h4 class="text-amber-400 font-bold text-sm heading">🔒 Ràng buộc Series</h4>
-                    <button onclick="clearSeriesLock()" class="text-xs text-rose-400 hover:underline">Xóa hết</button>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                    <button onclick="toggleSeriesLockPanel()" class="flex-1 flex items-center justify-between gap-2 text-left min-w-0">
+                        <span id="series-lock-summary" class="text-amber-400 font-bold text-sm heading truncate">🔒 Ràng buộc Series</span>
+                        <span id="series-lock-arrow" class="text-slate-400 flex-shrink-0 text-xs">▾ Thu gọn</span>
+                    </button>
+                    <button onclick="clearSeriesLock()" class="text-xs text-rose-400 hover:underline flex-shrink-0">Xóa hết</button>
                 </div>
+                <div id="series-lock-panel-body" class="mt-2">
                 <div class="flex gap-2 mb-3" id="series-format-toggle">
                     <button data-format="bo1" onclick="setSeriesFormat('bo1')" class="series-format-btn flex-1 text-sm font-bold py-2 rounded-lg border">BO1</button>
                     <button data-format="bo3" onclick="setSeriesFormat('bo3')" class="series-format-btn flex-1 text-sm font-bold py-2 rounded-lg border">BO3</button>
@@ -203,6 +207,7 @@
                         </select>
                     </div>
                     <div id="bo1-scout-result"></div>
+                </div>
                 </div>
             </div>
 
@@ -889,6 +894,7 @@
             listEl.innerHTML = seriesLocked.length
                 ? seriesLocked.map(n => `<span class="bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs px-2 py-1 rounded-full flex items-center gap-1.5">${n} <button onclick="removeSeriesLock('${jsEscape(n)}')" class="text-rose-400 hover:text-white font-bold">×</button></span>`).join('')
                 : '<span class="text-slate-500 text-xs italic">Chưa có tướng nào bị khóa cho series này.</span>';
+            updateSeriesLockSummary();
         }
         function addSeriesLock() {
             const input = document.getElementById('series-lock-input');
@@ -1064,6 +1070,36 @@
             const bo1Section = document.getElementById('bo1-scout-section');
             if (lockSection) lockSection.classList.toggle('hidden', seriesFormat === 'bo1');
             if (bo1Section) bo1Section.classList.toggle('hidden', seriesFormat !== 'bo1');
+            updateSeriesLockSummary();
+        }
+
+        // Panel này phình to nhất trong Draft Simulator khi ở BO1 (Nhận định + Ưu tiên cấm + Buộc phải
+        // cấm + Cần xác nhận với đồng đội + Nên pick + Đối sách còn tự do) — chiếm hết màn hình đầu tiên,
+        // trong khi phần đáng nhìn nhất khi đang draft là Gợi ý Lượt bên dưới. Thu gọn giữ đúng 1 dòng tóm
+        // tắt (định dạng + đội đang chọn) để không cần mở lại chỉ để nhớ đang cấu hình gì.
+        let seriesLockPanelCollapsed = false;
+        function applySeriesLockPanelCollapse() {
+            const body = document.getElementById('series-lock-panel-body');
+            const arrow = document.getElementById('series-lock-arrow');
+            if (!body || !arrow) return;
+            body.classList.toggle('hidden', seriesLockPanelCollapsed);
+            arrow.textContent = seriesLockPanelCollapsed ? '▸ Mở rộng' : '▾ Thu gọn';
+        }
+        function toggleSeriesLockPanel() {
+            seriesLockPanelCollapsed = !seriesLockPanelCollapsed;
+            applySeriesLockPanelCollapse();
+        }
+        function updateSeriesLockSummary() {
+            const el = document.getElementById('series-lock-summary');
+            if (!el) return;
+            let extra;
+            if (seriesFormat === 'bo1') {
+                const team = scoutedTeams[bo1Opponent];
+                extra = team ? `BO1 vs ${team.name}` : 'BO1 — chưa chọn đội đối đầu';
+            } else {
+                extra = `${seriesFormat.toUpperCase()}${seriesLocked.length ? ` · ${seriesLocked.length} tướng đã khóa` : ''}`;
+            }
+            el.textContent = `🔒 Ràng buộc Series — ${extra}`;
         }
         function populateBo1OpponentSelect() {
             const sel = document.getElementById('bo1-opponent-select');
@@ -1080,6 +1116,7 @@
             const sel = document.getElementById('bo1-opponent-select');
             if (sel && sel.value !== id) sel.value = id;
             renderBo1ScoutResult();
+            updateSeriesLockSummary();
             refreshAfterSeriesLockChange();
         }
         function setBo1OpponentSide(side) {
@@ -1505,6 +1542,13 @@
             if(step.type === 'pick') { updateCounterInfo(simSelectedHero, step.team, simStep); }
             updateSimUI();
             simStep++;
+            // Cấu hình xong thì lượt đầu tiên được xác nhận coi như "chốt" — tự thu gọn 1 lần để nhường
+            // chỗ cho Gợi ý Lượt, nhưng chỉ nếu người dùng chưa tự thu gọn/mở trước đó (đừng cãi lại thao
+            // tác họ vừa làm).
+            if (simStep === 1 && !seriesLockPanelCollapsed) {
+                seriesLockPanelCollapsed = true;
+                applySeriesLockPanelCollapse();
+            }
             cancelSimSelect();
             renderSimPool();
             renderAdvice();
@@ -3027,6 +3071,8 @@
             applySimPanelCollapse();
             teamPlanCollapsed = false;
             applyTeamPlanCollapse();
+            seriesLockPanelCollapsed = false;
+            applySeriesLockPanelCollapse();
             cancelSimSelect(); // xóa tướng đang chọn dở, tránh để lại panel thao tác/cảnh báo cũ
             updateSimUI();
             renderSimPool();
@@ -3068,6 +3114,7 @@
         renderMeta();
         renderSeriesLockUI();
         renderSeriesFormatToggle();
+        applySeriesLockPanelCollapse();
         populateBo1OpponentSelect();
         setMyRank(myRank);
         setMyPosition(myPosition);
