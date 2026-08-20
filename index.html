@@ -2250,7 +2250,10 @@
                 // đường mình — đây là tướng phải TRANH PICK sớm, không phải tướng để cấm. Trường hợp này
                 // xảy ra đúng lúc nguy hiểm nhất: đồng đội khác ngại nó nên nó vừa được cộng điểm ở 5b.
                 // Càng ít tướng thay thế trong pool của người đó thì cấm càng tai hại.
-                const ourStarters = myTeamOwners(d.hero).filter(o => !o.sub);
+                // Chỉ pool ở ĐÚNG vị trí người đó sẽ đá mới là thứ cấm đi thì mình mất thật. Hayate nằm
+                // trong pool AD phụ của Gàrán29 nhưng họ đá Hỗ trợ — cấm Hayate không lấy mất gì của mình,
+                // trong khi nó lại là tướng AD duy nhất đối phương đã lộ. Tính cả pool phụ là tự trói tay.
+                const ourStarters = myTeamOwners(d.hero).filter(o => !o.sub && o.primary);
                 const selfDenyDepth = ourStarters.length
                     ? Math.min(...ourStarters.map(o => myTeamPoolDepth(o.ingame, d.hero)))
                     : null;
@@ -2323,9 +2326,10 @@
             return `<div class="mb-2 bg-amber-500/10 border border-amber-500/30 rounded p-2">
                 <b class="text-amber-300">⚔️ Tranh pick — đừng cấm (${worth.length}):</b>
                 <div class="mt-1 space-y-1">${worth.slice(0, 3).map(x => {
-                    const owners = myTeamOwners(x.d.hero).filter(o => !o.sub).map(o => o.ingame).join('/');
+                    const primaries = myTeamOwners(x.d.hero).filter(o => !o.sub && o.primary);
+                    const owners = primaries.map(o => o.ingame).join('/');
                     const fears = myTeamFears(x.d.hero).map(p => p.ingame);
-                    return `<div class="text-[11px]">${heroChip(x.d)} <span class="text-slate-400">— ${owners} lấy làm tủ (pool ${myTeamPoolDepth(myTeamOwners(x.d.hero).filter(o => !o.sub)[0].ingame, x.d.hero)} tướng)${fears.length ? `, nhưng ${fears.join('/')} ngại nó` : ''}. Cấm đi là tự bịt đường mình — phải pick sớm để họ không lấy mất.</span></div>`;
+                    return `<div class="text-[11px]">${heroChip(x.d)} <span class="text-slate-400">— ${owners} lấy làm tủ (pool ${myTeamPoolDepth(primaries[0].ingame, x.d.hero)} tướng)${fears.length ? `, nhưng ${fears.join('/')} ngại nó` : ''}. Cấm đi là tự bịt đường mình — phải pick sớm để họ không lấy mất.</span></div>`;
                 }).join('')}</div></div>`;
         }
 
