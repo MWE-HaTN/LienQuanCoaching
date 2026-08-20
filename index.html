@@ -1000,7 +1000,7 @@
                 { ingame: "HuyVuxDay", pos1: "AD", mains1: ["Tel'Annas", "Violet", "Valhein"], pos2: "Support", mains2: ["Toro", "Arum", "Gildur"], fears: ["Florentino", "Zata", "Volkath", "Billow"] },
                 { ingame: "NinTiHan", sub: true, pos1: "Mid", mains1: ["Veera", "Aleister", "Lauriel"], pos2: "Caesar", mains2: ["Errol", "Zephys", "Omen"], fears: ["Florentino", "Nakroth"] },
                 { ingame: "ษTBGษXanä⁵⁰⁷", pos1: "Jungle", mains1: ["Triệu Vân", "Nakroth", "Billow"], pos2: "Caesar", mains2: ["Bolt Baron"], fears: [] },
-                { ingame: "ThiSĩĐiMid", pos1: "Caesar", mains1: ["Volkath", "Maloch"], pos2: "Mid", mains2: ["Lauriel"], fears: [] },
+                { ingame: "ThiSĩĐiMid", pos1: "Caesar", mains1: ["Volkath", "Maloch", "Marja", "Ryoma"], pos2: "Mid", mains2: ["Lauriel"], fears: [] },
                 { ingame: "Gàrán29", pos1: "Support", mains1: ["Grakk", "Toro", "Alice"], pos2: "AD", mains2: ["Hayate"], fears: [] }
             ]
         };
@@ -1008,9 +1008,10 @@
         function myTeamOwners(heroName) {
             const out = [];
             myTeam.players.forEach(p => {
-                if ((p.mains1 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos1, isMe: !!p.isMe, sub: !!p.sub });
+                // primary = tướng của đúng vị trí người đó sẽ đá; pool vị trí phụ chỉ là phương án xoay tua.
+                if ((p.mains1 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos1, isMe: !!p.isMe, sub: !!p.sub, primary: true });
                 // Mình đã chốt đánh Mid trong giải nên pool vị trí phụ của mình không tính là đội đáp được.
-                else if (!p.isMe && (p.mains2 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos2, isMe: false, sub: !!p.sub });
+                else if (!p.isMe && (p.mains2 || []).includes(heroName)) out.push({ ingame: p.ingame, pos: p.pos2, isMe: false, sub: !!p.sub, primary: false });
             });
             return out;
         }
@@ -1036,7 +1037,15 @@
         // sortKey: mức tin cậy để xếp hạng. Lane đồng đội = chưa biết (1.5) — nằm giữa "mình chơi được" và
         // "mình chơi dở", vì chưa có bằng chứng nào cả chứ không phải bằng chứng xấu.
         function masteryBand(hero) {
-            if (!isMyLane(hero)) {
+            // Ai khai tướng nào vào pool thi đấu là bằng chứng mạnh hơn bảng vị trí mặc định: Marja tra
+            // bảng ra Mid nhưng ThiSĩĐiMid khai nó ở Top, nếu cứ theo bảng thì tool lại đi tra thông thạo
+            // CỦA MÌNH cho một tướng của đồng đội rồi kết luận là đội không cầm được.
+            const iDeclared = (myTeam.players.find(p => p.isMe)?.mains1 || []).includes(hero);
+            // Chỉ khai báo ở ĐÚNG vị trí người đó sẽ đá mới đè được bảng vị trí. Lauriel là tướng Mid mà
+            // ThiSĩĐiMid khai ở pool Mid phụ — họ đang đá Top, nên nếu cần Lauriel thì người phải cầm nó
+            // là mình chứ không phải họ; ở đây vẫn phải tra thông thạo của mình.
+            const teamDeclared = myTeamOwners(hero).some(o => !o.isMe && !o.sub && o.primary);
+            if (!iDeclared && (teamDeclared || !isMyLane(hero))) {
                 // Đồng đội tự nhận là tướng tủ = đã xác nhận đội đáp được, khác hẳn "chưa ai xác nhận".
                 const owners = myTeamOwners(hero);
                 if (owners.length) {
