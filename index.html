@@ -2544,7 +2544,13 @@
                             if (df) after.push({ pos: x.d.flex, left: df.count, flexLeft: Math.max(0, df.flexCount - self), viaFlex: true });
                             return { ...x, after, minLeft: Math.min(...after.map(a => a.left)) };
                         })
-                        .sort((a, b) => (tierRank(a.d.tier) - tierRank(b.d.tier)) || (a.minLeft - b.minLeft));
+                        // Trước đây sort lại theo tier ở đây, tức là tính xong buildRankedBans rồi VỨT
+                        // nguyên điểm đó đi. Lý do cũ là "Phase 1 chưa ai lộ bài nên cứ cấm con mạnh
+                        // nhất" — nhưng đấu Bo1 có trinh sát thì biết trước pool của họ, đúng thứ mà lý
+                        // do cũ giả định là không có. Hậu quả: bảng trinh sát bảo cấm Nakroth còn lượt
+                        // Ban 1 vẫn đẩy Sinestrea/Billow lên vì S+. Nay xếp theo điểm (đã gồm tier, vị
+                        // trí trống và trinh sát), độ mỏng pool chỉ còn là tiêu chí phụ.
+                        .sort((a, b) => (b.score - a.score) || (a.minLeft - b.minLeft));
                     const sections = [renderDepthLine(depth)];
 
                     if (thinnest && thinnest.count >= 4) {
@@ -2552,6 +2558,10 @@
                     }
                     if (rankedBans.length > 0) {
                         const whyP1 = (x, i) => {
+                            // Có dữ liệu trinh sát thì đó mới là lý do thật của thứ hạng — nói độ mỏng
+                            // pool trước sẽ thành giải thích lệch hẳn với thứ tự đang hiển thị.
+                            const scout = x.reasons.find(r => r.startsWith('🎯') || r.includes('cấm hụt'));
+                            if (scout) return scout.replace('🎯 ', '');
                             if (i > 0 && x.d.pos === rankedBans[0].d.pos) {
                                 return `Cũng ở ${x.d.pos} như phương án 1 — cấm cả hai mới thật sự siết được lane này.`;
                             }
