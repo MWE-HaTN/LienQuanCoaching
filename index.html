@@ -999,7 +999,7 @@
                 { ingame: "Poppyi", isMe: true, pos1: "Mid", mains1: ["Azzen'Ka", "Goverra", "Kahlii"], pos2: "AD", mains2: ["Tel'Annas", "Laville", "Violet"], fears: ["Zata", "Billow"] },
                 { ingame: "HuyVuxDay", pos1: "AD", mains1: ["Tel'Annas", "Violet", "Valhein"], pos2: "Support", mains2: ["Toro", "Arum", "Gildur"], fears: ["Florentino", "Zata", "Volkath", "Billow"] },
                 { ingame: "NinTiHan", sub: true, pos1: "Mid", mains1: ["Veera", "Aleister", "Lauriel"], pos2: "Caesar", mains2: ["Errol", "Zephys", "Omen"], fears: ["Florentino", "Nakroth"] },
-                { ingame: "ษTBGษXanä⁵⁰⁷", pos1: "Jungle", mains1: ["Triệu Vân"], pos2: "Caesar", mains2: ["Bolt Baron"], fears: [] },
+                { ingame: "ษTBGษXanä⁵⁰⁷", pos1: "Jungle", mains1: ["Triệu Vân", "Nakroth", "Billow"], pos2: "Caesar", mains2: ["Bolt Baron"], fears: [] },
                 { ingame: "ThiSĩĐiMid", pos1: "Caesar", mains1: ["Volkath", "Maloch"], pos2: "Mid", mains2: ["Lauriel"], fears: [] },
                 { ingame: "Gàrán29", pos1: "Support", mains1: ["Grakk", "Toro", "Alice"], pos2: "AD", mains2: ["Hayate"], fears: [] }
             ]
@@ -1016,6 +1016,15 @@
         }
         function myTeamFears(heroName) {
             return myTeam.players.filter(p => (p.fears || []).includes(heroName));
+        }
+        // Người này còn bao nhiêu tướng đã khai ở đúng cái pool chứa tướng đang xét — pool càng mỏng thì
+        // mất tướng đó càng đau, dùng để cân xem có nên cấm một tướng mà đội mình cũng cầm hay không.
+        function myTeamPoolDepth(ingame, heroName) {
+            const p = myTeam.players.find(x => x.ingame === ingame);
+            if (!p) return 99;
+            if ((p.mains1 || []).includes(heroName)) return p.mains1.length;
+            if ((p.mains2 || []).includes(heroName)) return p.mains2.length;
+            return 99;
         }
 
         function isMyLane(hero) {
@@ -2206,6 +2215,14 @@
                     score += fearedBy.length * 14;
                     reasons.push(`😰 ${fearedBy.map(p => p.ingame).join(', ')} tự nhận ngại tướng này`);
                 }
+                // 5c. Nhưng nếu chính người đá chính của mình lấy tướng đó làm tủ thì cấm nó là tự bịt
+                // đường mình — đây là tướng phải TRANH PICK sớm, không phải tướng để cấm. Trường hợp này
+                // xảy ra đúng lúc nguy hiểm nhất: đồng đội khác ngại nó nên nó vừa được cộng điểm ở 5b.
+                // Càng ít tướng thay thế trong pool của người đó thì cấm càng tai hại.
+                const ourStarters = myTeamOwners(d.hero).filter(o => !o.sub);
+                const selfDenyDepth = ourStarters.length
+                    ? Math.min(...ourStarters.map(o => myTeamPoolDepth(o.ingame, d.hero)))
+                    : null;
 
                 // 6. Trinh sát Bo1: cộng điểm theo mức nguy hiểm ĐÃ TÍNH của tướng đó (rank người cầm +
                 // tier + số người cùng cầm), không phải theo 1 danh sách viết tay. Nhờ vậy tướng tủ của
@@ -2237,7 +2254,16 @@
                     }
                 }
 
-                return { d, score, reasons };
+                // 7. Áp mức phạt "tự bịt đường mình" SAU CÙNG, để nó hạ được cả điểm trinh sát ở bước 6 —
+                // nếu nhân sớm ở 5c thì bước 6 lại cộng đè lên và tướng vẫn leo đầu bảng.
+                const rawScore = score;
+                if (selfDenyDepth !== null && score > 0) {
+                    const factor = selfDenyDepth <= 1 ? 0.1 : selfDenyDepth === 2 ? 0.25 : 0.45;
+                    score = Math.round(score * factor);
+                    reasons.push(`⛔ ${ourStarters.map(o => o.ingame).join('/')} lấy tướng này làm tủ (pool ${selfDenyDepth} tướng) — cấm là tự bịt đường mình, phải TRANH PICK sớm chứ không cấm`);
+                }
+
+                return { d, score, rawScore, reasons, selfDeny: selfDenyDepth !== null };
             }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
         }
 
@@ -2250,6 +2276,26 @@
             if (oppOpenPos.includes(d.pos)) list.push(d.pos);
             if (d.flex && d.flex !== '—' && oppOpenPos.includes(d.flex)) list.push(d.flex);
             return list;
+        }
+
+        // Tướng mà chính người đá chính của mình lấy làm tủ thì KHÔNG được đứng chung danh sách cấm —
+        // trước đây nó vừa đứng đầu "Ưu tiên cấm" vừa mang lý do "đừng cấm", đúng kiểu hai bảng chỏi nhau.
+        // Tách hẳn thành mục tranh pick: việc cần làm là pick sớm, không phải cấm.
+        function renderContestedLine(contested, topBanScore) {
+            // Ai cũng có tướng tủ nên danh sách thô dài lê thê và thành nhiễu. Chỉ nêu con thật sự phải
+            // tranh: nếu bỏ mức phạt ra thì nó vẫn ngang tầm phương án cấm số 1, tức là đối phương cũng
+            // đang thèm nó y như mình.
+            const worth = contested
+                .filter(x => !topBanScore || x.rawScore >= topBanScore * 0.75)
+                .sort((a, b) => b.rawScore - a.rawScore);
+            if (!worth.length) return '';
+            return `<div class="mb-2 bg-amber-500/10 border border-amber-500/30 rounded p-2">
+                <b class="text-amber-300">⚔️ Tranh pick — đừng cấm (${worth.length}):</b>
+                <div class="mt-1 space-y-1">${worth.slice(0, 3).map(x => {
+                    const owners = myTeamOwners(x.d.hero).filter(o => !o.sub).map(o => o.ingame).join('/');
+                    const fears = myTeamFears(x.d.hero).map(p => p.ingame);
+                    return `<div class="text-[11px]">${heroChip(x.d)} <span class="text-slate-400">— ${owners} lấy làm tủ (pool ${myTeamPoolDepth(myTeamOwners(x.d.hero).filter(o => !o.sub)[0].ingame, x.d.hero)} tướng)${fears.length ? `, nhưng ${fears.join('/')} ngại nó` : ''}. Cấm đi là tự bịt đường mình — phải pick sớm để họ không lấy mất.</span></div>`;
+                }).join('')}</div></div>`;
         }
 
         function withBanValue(rankedBans, oppOpenPos) {
@@ -2614,7 +2660,9 @@
                     const forced = oppPicksLeft > 0 && oppPicksLeft === oppOpenPos.length;
                     context = `<span class="text-slate-300">Đối phương đã Pick: <b class="text-rose-400">${oppPicks.join(', ')}</b>. Còn <b class="text-amber-300">${oppPicksLeft} lượt pick</b> cho <b class="text-amber-300">${oppOpenPos.join(', ')}</b>${oppFilledPos.length > 0 ? ` — đã kín <b class="text-slate-500">${oppFilledPos.join(', ')}</b> (cấm vị trí này là phí lượt)` : ''}.</span>`;
 
-                    const rankedBans = withBanValue(buildRankedBans(available, myPicks, oppPicks, oppOpenPos), oppOpenPos);
+                    const allBans = withBanValue(buildRankedBans(available, myPicks, oppPicks, oppOpenPos), oppOpenPos);
+                    const contested = allBans.filter(x => x.selfDeny);
+                    const rankedBans = allBans.filter(x => !x.selfDeny);
                     const sections = [];
 
                     if (forced) {
@@ -2642,6 +2690,7 @@
                     } else {
                         sections.push(`<div>Không còn tướng đáng cấm trong Meta Pool cho các vị trí đối phương còn trống — cân nhắc cấm theo tướng tủ của player.</div>`);
                     }
+                    sections.push(renderContestedLine(contested, rankedBans.length ? rankedBans[0].score : 0));
                     action = sections.join('');
                     reason = `Một lượt cấm chỉ đáng giá khi đối phương (a) còn pick được tướng đó, và (b) <b>không có tướng thay thế tương đương ở cùng vị trí</b> — cấm mà họ chỉ đổi sang tướng ngang cơ thì coi như bỏ lượt.`;
                 } else {
@@ -2654,7 +2703,7 @@
                     const thinnest = depth.find(x => x.count > 0);
                     // Cấm 1 tướng rút lựa chọn ở CẢ 2 lane của nó, nhưng không cùng kiểu: ở lane chính nó
                     // là một tướng chuyên lane biến mất, còn ở lane flex nó chỉ là một phương án chữa cháy.
-                    const rankedBans = buildRankedBans(available, myPicks, oppPicks, oppOpenPos)
+                    const allBansP1 = buildRankedBans(available, myPicks, oppPicks, oppOpenPos)
                         .map(x => {
                             const self = tierRank(x.d.tier) <= 1 ? 1 : 0; // chỉ tướng S+/S mới được tính vào độ sâu
                             const after = [];
@@ -2671,6 +2720,8 @@
                         // Ban 1 vẫn đẩy Sinestrea/Billow lên vì S+. Nay xếp theo điểm (đã gồm tier, vị
                         // trí trống và trinh sát), độ mỏng pool chỉ còn là tiêu chí phụ.
                         .sort((a, b) => (b.score - a.score) || (a.minLeft - b.minLeft));
+                    const contestedP1 = allBansP1.filter(x => x.selfDeny);
+                    const rankedBans = allBansP1.filter(x => !x.selfDeny);
                     const sections = [renderDepthLine(depth)];
 
                     if (thinnest && thinnest.count >= 4) {
@@ -2703,6 +2754,7 @@
                     } else {
                         sections.push(`<div>${priorityBadge[2]} Ưu tiên Deny First Pick hoặc Target Ban.</div>`);
                     }
+                    sections.push(renderContestedLine(contestedP1, rankedBans.length ? rankedBans[0].score : 0));
                     action = sections.join('');
                     reason = "Chưa có đội hình để đọc vị, nên ưu tiên tier cao và <b>vị trí ít lựa chọn mạnh nhất</b> — cấm vào vị trí còn 5-8 tướng ngang cơ thì đối phương chỉ việc lấy con khác.";
                 }
