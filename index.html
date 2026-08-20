@@ -2903,11 +2903,23 @@
             // computeLaneAssignment — giống hệt cách "Kế Hoạch Đội Hình" đang xếp — thay vì theo thứ tự
             // pick lúc draft (P1..P5), vốn lộn xộn vì thứ tự pick không liên quan gì đến vai trò trong game.
             const { assignment, unassignedHeroes } = computeLaneAssignment(picks.filter(p => infoByName[p]));
+            const laneByHero = {};
+            Object.entries(assignment).forEach(([pos, hero]) => { laneByHero[hero] = pos; });
             const orderedNames = [
                 ...["Caesar", "Jungle", "Mid", "AD", "Support"].map(pos => assignment[pos]).filter(Boolean),
                 ...unassignedHeroes // trùng vai trò (buildLaneCoverageWarning) vẫn phải liệt kê đủ, xếp cuối
             ];
-            const heroInfos = orderedNames.map(n => infoByName[n]).filter(Boolean);
+            // Nhãn vị trí phải là lane THẬT SỰ được xếp (có thể là flex), không phải luôn luôn .pos tĩnh
+            // của tướng — nếu không, tướng bị đẩy sang flex (vd Sinestrea Jungle flex Caesar) vẫn hiện
+            // "(Jungle)" trong khi đang đứng ở vị trí Caesar trong danh sách, đúng kiểu lệch mà flex pick
+            // hay gặp. Cùng quy ước "flexed" với Kế Hoạch Đội Hình (buildTeamPlan) để 2 panel nói giống nhau.
+            const heroInfos = orderedNames.map(n => {
+                const info = infoByName[n];
+                if (!info) return null;
+                const lane = laneByHero[n];
+                if (lane) return { ...info, displayPos: lane, flexed: lane !== info.pos, dup: false };
+                return { ...info, displayPos: info.pos, flexed: false, dup: true };
+            }).filter(Boolean);
             if (heroInfos.length === 0) return `<p class="text-slate-500 italic">Chưa có dữ liệu chiến thuật cho đội hình này.</p>`;
 
             const wcCounts = {};
@@ -2934,7 +2946,14 @@
             html += `<div class="border-t border-slate-700 pt-3 mt-3">
                 <b class="text-amber-400">Vai trò từng tướng:</b>
                 <ul class="mt-2 space-y-1.5">
-                    ${heroInfos.map(h => `<li><b class="text-white">${h.hero}</b> <span class="text-slate-500">(${h.pos})</span> — ${h.use} <span class="text-slate-500">Win con: ${h.wincond}.</span></li>`).join('')}
+                    ${heroInfos.map(h => {
+                        const posTag = h.dup
+                            ? `<span class="text-rose-400 text-[11px] cursor-help" title="Trùng vai trò với tướng khác trong đội, không xếp được vào 1 trong 5 vị trí chuẩn dù đã tính cả flex">(${h.displayPos} · trùng vai trò)</span>`
+                            : h.flexed
+                                ? `<span class="text-cyan-400 text-[11px] cursor-help" title="Vị trí chính là ${h.pos}, đang flex sang ${h.displayPos}">(${h.displayPos} · flex)</span>`
+                                : `<span class="text-slate-500">(${h.displayPos})</span>`;
+                        return `<li><b class="text-white">${h.hero}</b> ${posTag} — ${h.use} <span class="text-slate-500">Win con: ${h.wincond}.</span></li>`;
+                    }).join('')}
                 </ul>
             </div>`;
             return html;
