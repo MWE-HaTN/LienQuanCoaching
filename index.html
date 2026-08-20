@@ -2148,15 +2148,18 @@
                         if (hit.outclassed) score -= 15;
                         reasons.push(`🎯 Trinh sát ${teamName}: ${hit.reasons.join(', ')}`);
                     } else {
-                        // Tướng KHÔNG có trong pool đã trinh sát: cấm nó gần như là cấm hụt vì họ sẽ không
-                        // đụng tới. Đây là chỗ trước đây 2 bảng nói ngược nhau — bảng theo lượt vẫn đẩy
-                        // Sinestrea/Billow lên đầu chỉ vì S+, trong khi cả 2 đều không nằm trong pool của họ.
-                        // Trừ theo mức đã soi được: soi càng kỹ thì càng dám tin là họ không có tướng đó.
+                        // Tướng KHÔNG có trong pool đã trinh sát: toàn bộ điểm tính đến đây (vị trí trống,
+                        // counter, sync, tier...) đều dựa trên giả định "họ CÓ THỂ pick tướng này" — soi
+                        // càng kỹ mà không thấy thì giả định đó càng khó tin. Từng trừ 1 khoản cố định
+                        // (tối đa -20), nhưng tướng S+ base ~53 điểm thì trừ 20 vẫn còn 33 — vẫn đứng đầu,
+                        // đúng lỗi bị bắt: nhãn nói "nhiều khả năng cấm hụt" mà vẫn được gợi ý hàng đầu.
+                        // Nay NHÂN xuống theo mức đã soi được, giữ sàn 15% vì trinh sát không bao giờ chắc
+                        // 100% (comfort pick giấu bài, HLV đổi chiến thuật phút chót).
                         const comp = bo1ScoutingCompleteness();
-                        const penalty = Math.round(20 * comp);
-                        if (penalty > 0) {
-                            score -= penalty;
-                            reasons.push(`không nằm trong pool đã trinh sát của ${teamName} (đã soi ${Math.round(comp * 100)}% đội hình) — nhiều khả năng cấm hụt`);
+                        if (comp > 0) {
+                            const factor = Math.max(0.15, 1 - comp * 0.75);
+                            score = Math.round(score * factor);
+                            reasons.push(`không nằm trong pool đã trinh sát của ${teamName} (đã soi ${Math.round(comp * 100)}% đội hình) — hạ ${Math.round((1 - factor) * 100)}% điểm, nhiều khả năng cấm hụt`);
                         }
                     }
                 }
