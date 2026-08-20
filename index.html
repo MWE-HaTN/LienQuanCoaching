@@ -996,7 +996,7 @@
         // Tên vị trí trong sheet (Top/SP/Ad) quy về đúng chuẩn của app (Caesar/Support/AD).
         const myTeam = {
             players: [
-                { ingame: "Poppyi", isMe: true, pos1: "Mid", mains1: ["Azzen'Ka", "Goverra", "Kahlii"], pos2: "AD", mains2: ["Tel'Annas", "Laville", "Violet"], fears: ["Zata", "Billow"] },
+                { ingame: "Poppyi", isMe: true, pos1: "Mid", mains1: ["Azzen'Ka", "Goverra", "Kahlii", "Gildur", "Yue"], pos2: "AD", mains2: ["Tel'Annas", "Laville", "Violet"], fears: ["Zata", "Billow"] },
                 { ingame: "HuyVuxDay", pos1: "AD", mains1: ["Tel'Annas", "Violet", "Valhein"], pos2: "Support", mains2: ["Toro", "Arum", "Gildur"], fears: ["Florentino", "Zata", "Volkath", "Billow"] },
                 { ingame: "NinTiHan", sub: true, pos1: "Mid", mains1: ["Veera", "Aleister", "Lauriel"], pos2: "Caesar", mains2: ["Errol", "Zephys", "Omen"], fears: ["Florentino", "Nakroth"] },
                 { ingame: "ษTBGษXanä⁵⁰⁷", pos1: "Jungle", mains1: ["Triệu Vân", "Nakroth", "Billow"], pos2: "Caesar", mains2: ["Bolt Baron"], fears: [] },
@@ -1049,12 +1049,19 @@
                 return { level: null, sortKey: 1.5, inMyLane: false, teamOwned: false, owners: [],
                          label: 'lane đồng đội — chưa ai xác nhận', cls: 'text-sky-300' };
             }
-            const m = myMastery[hero];
-            if (m === undefined) return { level: 0, sortKey: 0, inMyLane: true, teamOwned: false, owners: [], label: 'mình chưa chơi', cls: 'text-rose-300' };
-            if (m >= 1000) return { level: 3, sortKey: 3, inMyLane: true, teamOwned: false, owners: [], label: `thuần thục ${m}`, cls: 'text-amber-300' };
-            if (m >= 400) return { level: 2, sortKey: 2, inMyLane: true, teamOwned: false, owners: [], label: `chơi được ${m}`, cls: 'text-emerald-300' };
-            if (m >= 100) return { level: 1, sortKey: 1, inMyLane: true, teamOwned: false, owners: [], label: `mới biết ${m}`, cls: 'text-slate-400' };
-            return { level: 0, sortKey: 0, inMyLane: true, teamOwned: false, owners: [], label: `mình gần như chưa chơi ${m}`, cls: 'text-rose-300' };
+            const m = myMastery[hero] || 0;
+            const base = { inMyLane: true, teamOwned: false, owners: [] };
+            // Tướng mình TỰ KHAI vào pool thi đấu thì đã là cam kết sẽ cầm nó, kể cả khi số thông thạo còn
+            // thấp — biết cách vận hành không nằm trong con số đó. Nhưng cũng không được thổi lên ngang
+            // tướng đã thuần thục, nên cho một bậc riêng ở giữa và nói thẳng là chưa chắc tay.
+            const declared = (myTeam.players.find(p => p.isMe)?.mains1 || []).includes(hero);
+            if (m >= 1000) return { ...base, level: 3, sortKey: 3, label: `thuần thục ${m}`, cls: 'text-amber-300' };
+            if (m >= 400) return { ...base, level: 2, sortKey: 2, label: `chơi được ${m}${declared ? ', khai vào pool giải' : ''}`, cls: 'text-emerald-300' };
+            if (declared) return { ...base, level: 2, sortKey: 1.9, declared: true, shaky: true,
+                                   label: `khai vào pool giải nhưng thông thạo mới ${m} — chưa chắc tay`, cls: 'text-amber-400' };
+            if (m >= 100) return { ...base, level: 1, sortKey: 1, label: `mới biết ${m}`, cls: 'text-slate-400' };
+            if (!myMastery[hero]) return { ...base, level: 0, sortKey: 0, label: 'mình chưa chơi', cls: 'text-rose-300' };
+            return { ...base, level: 0, sortKey: 0, label: `mình gần như chưa chơi ${m}`, cls: 'text-rose-300' };
         }
 
         const scoutedTeams = {
@@ -1386,12 +1393,19 @@
                         .map(c => `${c.hero} (${(allHeroes.find(h => h.name === c.hero) || {}).pos || '?'})`)
                 }))
                 .filter(x => x.asks.length);
+            // Bài trị duy nhất là tướng mình khai vào pool giải nhưng thông thạo còn thấp: không phải
+            // "buộc phải cấm" (mình có chuẩn bị), nhưng cũng không phải yên tâm — đây là chỗ dễ vỡ nhất
+            // trong draft, phải biết trước để hoặc cấm hoặc luyện thêm chứ đừng để tới trận mới biết.
+            const shakyOnly = live.filter(t => t.inMetaPool
+                && confirmed(t).length > 0
+                && confirmed(t).every(c => c.band.shaky))
+                .map(t => ({ hero: t.hero, answers: confirmed(t).map(c => `${c.hero} (${myMastery[c.hero] || 0})`) }));
             // Tướng cả đội tự nhận ngại — dữ liệu này không suy ra được từ tier/counter.
             const fearedThreats = live.filter(t => myTeamFears(t.hero).length > 0)
                 .map(t => ({ hero: t.hero, by: myTeamFears(t.hero).map(p => p.ingame) }));
 
             return {
-                team, oppSide, mySide, threats, exposure, priorityBans, mustBan, needTeamCheck, fearedThreats, myRankScore,
+                team, oppSide, mySide, threats, exposure, priorityBans, mustBan, needTeamCheck, shakyOnly, fearedThreats, myRankScore,
                 live,
                 picked: threats.filter(t => t.status === 'picked'),
                 neutralized: threats.filter(t => t.status === 'banned' || t.status === 'stolen' || t.status === 'closed')
@@ -1441,7 +1455,7 @@
             if (!el) return;
             const plan = buildBo1CounterPlan();
             if (!plan) { el.innerHTML = ''; return; }
-            const { team, threats, exposure, live, picked, neutralized, priorityBans, mustBan, needTeamCheck, fearedThreats } = plan;
+            const { team, threats, exposure, live, picked, neutralized, priorityBans, mustBan, needTeamCheck, shakyOnly, fearedThreats } = plan;
             const bestPicks = bo1BestCounterPicks(plan);
 
             const threatRow = t => `
@@ -1488,6 +1502,14 @@
                         <b class="text-sky-400">Cần xác nhận với đồng đội (${needTeamCheck.length}):</b>
                         <div class="text-slate-300 mt-1 space-y-1">
                             ${needTeamCheck.slice(0, 5).map(x => `<div>• <b class="text-white">${x.hero}</b> <span class="text-slate-400 text-xs">— bài trị nằm ở lane khác: ${x.asks.join(', ')}. Mình đánh ${myPosition} nên không tự đáp được, hỏi đồng đội có cầm được không.</span></div>`).join('')}
+                        </div>
+                    </div>` : ''}
+
+                    ${(shakyOnly || []).length ? `
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-amber-500">
+                        <b class="text-amber-400">Đáp được nhưng chưa chắc tay (${shakyOnly.length}):</b>
+                        <div class="text-slate-300 mt-1 space-y-1">
+                            ${shakyOnly.slice(0, 5).map(x => `<div>• <b class="text-white">${x.hero}</b> <span class="text-slate-400 text-xs">— bài trị duy nhất mình có là ${x.answers.join(', ')}, đều là tướng khai vào pool giải mà thông thạo còn thấp. Không tới mức buộc phải cấm, nhưng nếu còn dư lượt cấm thì đây là chỗ nên tiêu, hoặc luyện thêm trước giải.</span></div>`).join('')}
                         </div>
                     </div>` : ''}
 
