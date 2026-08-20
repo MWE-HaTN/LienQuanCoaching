@@ -185,9 +185,15 @@
 
                 <div id="bo1-scout-section" class="hidden">
                     <p class="text-xs text-slate-400 mb-3">Đấu 1 game duy nhất — chọn đội đối đầu đã trinh sát để nhận gợi ý cấm/đối sách. Tướng ưu tiên cấm của đội này sẽ được cộng điểm thật trong gợi ý cấm ở mỗi lượt Ban.</p>
-                    <select id="bo1-opponent-select" onchange="setBo1Opponent(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500 mb-3">
-                        <option value="">— Chọn đội đối đầu —</option>
-                    </select>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                        <select id="bo1-opponent-select" onchange="setBo1Opponent(this.value)" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                            <option value="">— Chọn đội đối đầu —</option>
+                        </select>
+                        <select id="bo1-opponent-side" onchange="setBo1OpponentSide(this.value)" class="sm:w-56 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                            <option value="red">Họ là Team Red</option>
+                            <option value="blue">Họ là Team Blue</option>
+                        </select>
+                    </div>
                     <div id="bo1-scout-result"></div>
                 </div>
             </div>
@@ -908,6 +914,7 @@
             renderTeamPlan();
             renderAdvice();
             refreshCounterPanel();
+            renderBo1ScoutResult();
             if (simSelectedHero) renderSelectionRisk(simSelectedHero);
         }
 
@@ -922,8 +929,12 @@
                 priorityBans: [
                     { hero: "Nakroth", reason: "tướng meta thật duy nhất của đội, 2 người cùng cầm" }
                 ],
-                counters: [
-                    { vs: "Nakroth (S, Jungle)", picks: "Aoi, Zephys, Zuka" }
+                players: [
+                    { name: "Nguyễn Tấn Thịnh", rank: "Đại cao thủ 3", pos: ["Jungle", "Caesar", "Support"], heroes: ["Helen", "Arum", "Skud"] },
+                    { name: "Nguyễn Xuân Trường", rank: "Đồng 3", pos: ["Jungle", "Caesar", "Mid"], heroes: ["Natalya", "Veera", "Nakroth"] },
+                    { name: "Nguyễn Văn Minh", rank: "Đại cao thủ 4", pos: ["Mid", "Support", "AD"], heroes: ["Rouie", "Thane", "Krizzix"] },
+                    { name: "Vũ Tiến Thành", rank: "Cao thủ", pos: ["Caesar", "Jungle", "Mid", "AD", "Support"], heroes: ["Kaine", "Nakroth", "Lauriel"] },
+                    { name: "Nguyễn Minh Phú", rank: "Không xác định", pos: ["AD", "Caesar", "Jungle"], heroes: [] }
                 ]
             },
             nofear: {
@@ -933,9 +944,12 @@
                     { hero: "Hayate", reason: "carry tuyến sau cực mạnh (S+, AD), top-ban bất kể đối thủ là ai" },
                     { hero: "Ryoma", reason: "poke lane rất mạnh (S, Caesar) nếu chiếm lợi thế sớm" }
                 ],
-                counters: [
-                    { vs: "Hayate (S+, AD)", picks: "Moren, Violet, Flowborn" },
-                    { vs: "Ryoma (S, Caesar)", picks: "Yena, Omen, Qi" }
+                players: [
+                    { name: "Hồ Quyết Bảo", rank: "Ẩn thông tin", pos: ["Mid"], heroes: [] },
+                    { name: "Hoàng Ngọc Mai Hương", rank: "Kim cương 3", pos: ["AD"], heroes: ["Krizzix", "Raz", "Hayate"] },
+                    { name: "Nguyễn Sỹ Kiệt", rank: "Đại cao thủ 3", pos: ["Jungle"], heroes: [] },
+                    { name: "Nguyễn Thị Cúc", rank: "Bạch kim 1", pos: ["Support"], heroes: [] },
+                    { name: "Lê Ninh Sỹ", rank: "Tinh anh 3", pos: ["Caesar"], heroes: ["Violet", "Skud", "Ryoma"] }
                 ]
             },
             dung_im: {
@@ -945,11 +959,12 @@
                     { hero: "Nakroth", reason: "tướng meta thật rõ nhất của đội (S, Jungle)" },
                     { hero: "Violet", reason: "tướng AD thật mạnh nhất đội (S+)" }
                 ],
-                counters: [
-                    { vs: "Nakroth (S, Jungle)", picks: "Aoi, Zephys, Zuka" },
-                    { vs: "Violet (S+, AD)", picks: "Hayate, Moren, Flowborn" },
-                    { vs: "Elsu (S, AD, theo ghi chú)", picks: "Moren, Violet, Hayate, Sinestrea, Billow" },
-                    { vs: "Tel'Annas (A, AD)", picks: "Capheny, Violet, Hayate, Billow, Stuart" }
+                players: [
+                    { name: "Trần Thị Thảo", rank: "Đồng 3", pos: ["Mid"], heroes: ["Flowborn", "Tel'Annas", "Krixi"] },
+                    { name: "Châu Minh Hoàng Kim Long", rank: "Đồng 3", pos: ["Caesar"], heroes: ["Arthur", "Flowborn", "Tel'Annas"] },
+                    { name: "Trần Thị Phượng Quyên", rank: "Đồng 3", pos: ["Support"], heroes: ["Grakk", "Alice", "Krixi", "Tel'Annas", "Arthur"] },
+                    { name: "Nguyễn Đoàn Khánh Minh", rank: "Đồng 2", pos: ["AD"], heroes: ["Valhein", "Yorn", "Violet", "Tel'Annas"] },
+                    { name: "Nguyễn Cảnh Toàn", rank: "Tinh anh 5", pos: ["Jungle"], heroes: ["Quillen", "Raz", "Nakroth", "Kaine", "Zill", "Elsu"] }
                 ]
             },
             mua_lua: {
@@ -960,17 +975,20 @@
                     { hero: "Aya", reason: "Support thật mạnh (S+), phối hợp tốt với Aoi/Nakroth/Capheny" },
                     { hero: "Zata", reason: "tướng Mid mạnh nhất Meta Pool khớp lối chơi \"luyện thuần Mid\"" }
                 ],
-                counters: [
-                    { vs: "Violet/Elsu/Moren (bộ 3 AD)", picks: "Hayate là điểm chung khắc chế cả 3, ưu tiên tự pick sớm" },
-                    { vs: "Florentino (S+, Caesar)", picks: "Arthur, Zuka, Volkath" },
-                    { vs: "Aya (S+, Support)", picks: "Alice, Dolia, Annette" },
-                    { vs: "Zata (S+, Mid)", picks: "Yue, Liliana, Raz" }
+                players: [
+                    { name: "Nguyễn Công Danh", rank: "Tinh anh 2", pos: ["AD"], heroes: ["Violet", "Elsu", "Moren"] },
+                    { name: "Phạm Xuân Dũng", rank: "Bạc 1", pos: ["Mid"], heroes: ["Zata", "Ilumia", "Kahlii", "Mganga", "Alice", "Chaugnar", "Yorn"] },
+                    { name: "Đoàn Trung Hiếu", rank: "Không xác định", pos: ["Jungle"], heroes: [] },
+                    { name: "Nguyễn Thiên Hưng", rank: "Đồng 3 (cao nhất: Tinh anh 1)", pos: ["Caesar", "Mid"], heroes: ["Florentino", "Raz", "Omen", "Max", "Taara"] },
+                    { name: "Nguyễn Thành Đức", rank: "Bạch kim 4", pos: ["Support", "Caesar"], heroes: ["Aya", "Chaugnar", "Arum", "Taara"] }
                 ]
             }
         };
 
         let seriesFormat = localStorage.getItem('lqSeriesFormat') || 'bo3';
         let bo1Opponent = localStorage.getItem('lqBo1Opponent') || '';
+        // Đối sách phải biết đội đã trinh sát đang ngồi ghế nào mới đọc đúng pick của họ vs pick của mình.
+        let bo1OpponentSide = localStorage.getItem('lqBo1OpponentSide') || 'red';
 
         function setSeriesFormat(fmt) {
             seriesFormat = fmt;
@@ -1006,24 +1024,183 @@
             renderBo1ScoutResult();
             refreshAfterSeriesLockChange();
         }
+        function setBo1OpponentSide(side) {
+            bo1OpponentSide = side;
+            try { localStorage.setItem('lqBo1OpponentSide', side); } catch (e) {}
+            const sel = document.getElementById('bo1-opponent-side');
+            if (sel) sel.value = side;
+            renderBo1ScoutResult();
+        }
+        // --- ĐỐI SÁCH ĐỘNG CHO BO1 ---
+        // Đối sách viết cứng kiểu "vs X → pick Y" sai ngay khi draft bắt đầu chạy: X có thể đã bị cấm,
+        // Y có thể đã bị lấy mất, hoặc đối phương đã kín vị trí của X nên X hết nguy hiểm. Nên tính lại
+        // mỗi lượt từ đúng 3 nguồn thật: (1) tướng tủ đã trinh sát của họ, (2) tướng họ đã pick trong
+        // ván này, (3) tướng mình đã pick. Cùng 1 tướng tủ sẽ đổi hẳn ý nghĩa theo diễn biến, nên trạng
+        // thái phải tính chứ không viết sẵn được.
+        function buildBo1CounterPlan() {
+            const team = scoutedTeams[bo1Opponent];
+            if (seriesFormat !== 'bo1' || !team) return null;
+
+            const oppSide = bo1OpponentSide;
+            const mySide = oppSide === 'blue' ? 'red' : 'blue';
+            const oppPicks = simState[oppSide].pick.filter(h => h);
+            const myPicks = simState[mySide].pick.filter(h => h);
+            const allBans = [...simState.blue.ban, ...simState.red.ban].filter(h => h);
+            const unavailable = new Set(getUnavailableHeroes());
+            const allPos = ["Caesar", "Jungle", "Mid", "AD", "Support"];
+
+            // Tướng tủ chỉ còn nguy hiểm nếu đối phương CÒN CHỖ để đặt nó — hết chỗ thì coi như đã bị
+            // vô hiệu bằng chính diễn biến draft, không cần tốn lượt cấm nữa.
+            const oppOpen = allPos.filter(p => !(p in computeLaneAssignment(oppPicks).assignment));
+            const myOpen = allPos.filter(p => !(p in computeLaneAssignment(myPicks).assignment));
+
+            // Gom tướng tủ toàn đội, nhớ ai chơi được — nhiều người cùng chơi được 1 tướng thì cấm 1 lượt
+            // không dập được lối chơi đó, và ngược lại tướng chỉ 1 người chơi thì cấm là chặn đúng người.
+            const poolMap = new Map();
+            team.players.forEach(p => {
+                (p.heroes || []).forEach(h => {
+                    if (!poolMap.has(h)) poolMap.set(h, []);
+                    poolMap.get(h).push(p.name);
+                });
+            });
+
+            const fitsOpen = (d, open) => open.includes(d.pos) || (d.flex && d.flex !== '—' && open.includes(d.flex));
+
+            const threats = [];
+            poolMap.forEach((players, hero) => {
+                const d = draftData.find(x => x.hero === hero);
+                let status;
+                if (oppPicks.includes(hero)) status = 'picked';
+                else if (myPicks.includes(hero)) status = 'stolen';
+                else if (allBans.includes(hero) || seriesLocked.includes(hero)) status = 'banned';
+                else if (d && !fitsOpen(d, oppOpen)) status = 'closed';
+                else status = 'live';
+
+                // Counter khả dụng: cột counter của tướng đó, lọc theo tướng còn trong pool và mình còn
+                // chỗ xếp. Tách counter thật (1 chiều) khỏi đối lane (2 chiều) — đối lane không cho ai lợi thế.
+                const counters = (d ? counterNamesOf(hero) : [])
+                    .map(name => {
+                        const cd = draftData.find(x => x.hero === name);
+                        if (!cd) return null;
+                        return {
+                            hero: name, tier: cd.tier,
+                            rel: counterRelation(name, hero),
+                            available: !unavailable.has(name),
+                            fits: fitsOpen(cd, myOpen),
+                            mine: myPicks.includes(name)
+                        };
+                    })
+                    .filter(c => c && c.rel)
+                    .sort((a, b) => (b.available - a.available) || (b.fits - a.fits) || (tierRank(a.tier) - tierRank(b.tier)));
+
+                let score = d ? (7 - tierRank(d.tier)) * 4 : 4; // ngoài Meta Pool: không có tier để chấm
+                score += players.length * 6;
+                if (status === 'picked') score += 20;
+                if (d && fitsOpen(d, oppOpen)) score += 10;
+
+                threats.push({ hero, players, d, status, counters, score, inMetaPool: !!d });
+            });
+            threats.sort((a, b) => b.score - a.score);
+
+            // Mình đang hở gì: tướng mình đã pick bị tướng tủ CHƯA bị chặn của họ khắc chế thật (1 chiều).
+            const exposure = [];
+            myPicks.forEach(mp => {
+                const by = threats.filter(t => (t.status === 'live' || t.status === 'picked') && counterRelation(t.hero, mp) === 'counter');
+                if (by.length) exposure.push({ myHero: mp, by });
+            });
+
+            return {
+                team, oppSide, mySide, threats, exposure,
+                live: threats.filter(t => t.status === 'live'),
+                picked: threats.filter(t => t.status === 'picked'),
+                neutralized: threats.filter(t => t.status === 'banned' || t.status === 'stolen' || t.status === 'closed')
+            };
+        }
+
+        function bo1CounterChips(counters) {
+            // Counter mình ĐÃ pick nằm trong danh sách "không còn khả dụng" (đã bị lấy — bởi chính mình),
+            // nhưng đó lại là trường hợp tốt nhất: phải hiện ✓ để coach biết mình đã có sẵn bài trị, chứ
+            // không được lọc mất chung với tướng bị đối phương/cấm lấy đi.
+            const usable = counters.filter(c => c.available || c.mine);
+            if (!usable.length) return '<span class="text-rose-300 text-xs">không còn counter nào trong Meta Pool — phải xử lý bằng lối chơi</span>';
+            return usable.slice(0, 4).map(c => {
+                const cls = c.mine ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                    : c.fits ? 'bg-slate-700 border-slate-600 text-slate-200'
+                    : 'bg-slate-800 border-slate-700 text-slate-500';
+                const mark = c.mine ? ' ✓' : (c.fits ? '' : ' (hết chỗ)');
+                const relMark = c.rel === 'rival' ? '<span class="text-slate-500 text-[10px]"> đối lane</span>' : '';
+                return `<span class="inline-block border rounded px-1.5 py-0.5 text-xs mr-1 mb-1 ${cls}">${c.hero}${mark}${relMark}</span>`;
+            }).join('');
+        }
+
         function renderBo1ScoutResult() {
             const el = document.getElementById('bo1-scout-result');
             if (!el) return;
-            const team = scoutedTeams[bo1Opponent];
-            if (!team) { el.innerHTML = ''; return; }
+            const plan = buildBo1CounterPlan();
+            if (!plan) { el.innerHTML = ''; return; }
+            const { team, threats, exposure, live, picked, neutralized } = plan;
+
+            const banStatus = b => {
+                const t = threats.find(x => x.hero === b.hero);
+                if (!t) return '<span class="text-slate-500 text-xs">—</span>';
+                if (t.status === 'banned') return '<span class="text-emerald-400 text-xs">✓ đã cấm</span>';
+                if (t.status === 'stolen') return '<span class="text-emerald-400 text-xs">✓ mình lấy mất</span>';
+                if (t.status === 'picked') return '<span class="text-rose-400 text-xs">✕ họ đã lấy</span>';
+                if (t.status === 'closed') return '<span class="text-slate-400 text-xs">họ hết chỗ vị trí này</span>';
+                return '<span class="text-amber-400 text-xs">⚠ còn tự do</span>';
+            };
+
+            const threatRow = t => `
+                <div class="py-1.5 border-b border-slate-700/50 last:border-0">
+                    <div class="flex flex-wrap items-baseline gap-x-2">
+                        <b class="${t.d ? getTierClass(t.d.tier) : 'text-slate-400'}">${t.hero}</b>
+                        ${t.d ? `<span class="text-slate-500 text-xs">${t.d.tier} · ${t.d.pos}</span>` : '<span class="text-slate-500 text-xs italic">ngoài Meta Pool</span>'}
+                        <span class="text-slate-500 text-xs">${t.players.length} người chơi được</span>
+                    </div>
+                    ${t.inMetaPool ? `<div class="mt-1">${bo1CounterChips(t.counters)}</div>`
+                        : '<div class="text-slate-500 text-xs italic mt-0.5">chưa có dữ liệu counter — cần xem VOD thực chiến</div>'}
+                </div>`;
+
             el.innerHTML = `
                 <div class="space-y-2 text-sm">
                     <div class="p-3 bg-slate-800 rounded border-l-4 border-sky-500"><b class="text-sky-400">Nhận định:</b> <span class="text-slate-300">${team.read}</span></div>
+
                     <div class="p-3 bg-slate-800 rounded border-l-4 border-rose-500"><b class="text-rose-400">Ưu tiên cấm (đã cộng điểm vào gợi ý cấm mỗi lượt Ban):</b>
                         <ul class="text-slate-300 mt-1 space-y-1">
-                            ${team.priorityBans.map(b => `<li>• <b class="text-white">${b.hero}</b> — ${b.reason}</li>`).join('')}
+                            ${team.priorityBans.map(b => `<li>• <b class="text-white">${b.hero}</b> — ${b.reason} ${banStatus(b)}</li>`).join('')}
                         </ul>
                     </div>
-                    <div class="p-3 bg-slate-800 rounded border-l-4 border-emerald-500"><b class="text-emerald-400">Đối sách:</b>
+
+                    ${picked.length ? `
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-rose-500">
+                        <b class="text-rose-400">Họ đã lấy tướng tủ (${picked.length}) — phải counter bằng pick:</b>
+                        <div class="mt-1">${picked.map(threatRow).join('')}</div>
+                    </div>` : ''}
+
+                    ${exposure.length ? `
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-amber-500">
+                        <b class="text-amber-400">Đội mình đang hở:</b>
                         <div class="text-slate-300 mt-1 space-y-1">
-                            ${team.counters.map(c => `<div>${c.vs} → <b class="text-white">${c.picks}</b></div>`).join('')}
+                            ${exposure.map(e => `<div>• <b class="text-white">${e.myHero}</b> của mình bị <b class="text-rose-300">${e.by.map(t => t.hero).join(', ')}</b> khắc chế — tướng này họ chơi được và chưa bị chặn.</div>`).join('')}
                         </div>
+                    </div>` : ''}
+
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-emerald-500">
+                        <b class="text-emerald-400">Đối sách — tướng tủ của họ còn tự do (${live.length}/${threats.length}):</b>
+                        ${live.length
+                            ? `<div class="mt-1">${live.slice(0, 6).map(threatRow).join('')}</div>
+                               <p class="text-xs text-slate-500 mt-2">Xếp theo mức nguy hiểm: tier + số người chơi được + còn khớp vị trí trống của họ. Chip xanh ✓ = mình đã có sẵn tướng khắc chế; chip mờ = counter còn nhưng đội mình hết chỗ xếp.</p>`
+                            : '<p class="text-slate-400 mt-1">Đã chặn hết tướng tủ đã trinh sát của họ.</p>'}
                     </div>
+
+                    ${neutralized.length ? `
+                    <div class="p-3 bg-slate-900/60 rounded border border-slate-700">
+                        <b class="text-slate-400 text-xs">Đã vô hiệu (${neutralized.length}):</b>
+                        <span class="text-slate-500 text-xs">${neutralized.map(t => {
+                            const tag = t.status === 'banned' ? 'đã cấm' : t.status === 'stolen' ? 'mình lấy' : 'hết chỗ';
+                            return `${t.hero} <i>(${tag})</i>`;
+                        }).join(' · ')}</span>
+                    </div>` : ''}
                 </div>`;
         }
 
@@ -1114,6 +1291,7 @@
             renderSimPool();
             renderAdvice();
             renderTeamPlan();
+            renderBo1ScoutResult();
             refreshPostDraftPanels();
             saveDraftState();
 
@@ -1162,6 +1340,7 @@
             renderSimPool();
             renderAdvice();
             renderTeamPlan();
+            renderBo1ScoutResult();
             refreshCounterPanel();
             refreshPostDraftPanels();
             saveDraftState();
@@ -2605,6 +2784,7 @@
             renderSimPool();
             renderAdvice();
             renderTeamPlan();
+            renderBo1ScoutResult();
             refreshPostDraftPanels();
             saveDraftState();
             restartTimerIfRunning();
@@ -2641,7 +2821,7 @@
         renderSeriesLockUI();
         renderSeriesFormatToggle();
         populateBo1OpponentSelect();
-        renderBo1ScoutResult();
+        setBo1OpponentSide(bo1OpponentSide);
 
         // Khôi phục draft đang dở (nếu có) trước khi render simulator
         const restored = loadDraftState();
