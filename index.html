@@ -1070,6 +1070,10 @@
         function setBo1Opponent(id) {
             bo1Opponent = id;
             try { localStorage.setItem('lqBo1Opponent', id); } catch (e) {}
+            // Đồng bộ lại ô chọn: nếu gọi hàm này từ nơi khác mà không set lại value thì dropdown sẽ hiện
+            // tên một đội trong khi nội dung bên dưới là đội khác — đúng kiểu sai lệch khó phát hiện.
+            const sel = document.getElementById('bo1-opponent-select');
+            if (sel && sel.value !== id) sel.value = id;
             renderBo1ScoutResult();
             refreshAfterSeriesLockChange();
         }
@@ -1093,33 +1097,52 @@
         // thuộc diễn biến draft. Tách riêng để gợi ý cấm dùng lại được: buildRankedBans chạy cho từng
         // tướng ở mỗi lượt (và chạy lại nhiều lần trong simulateDraftProjection), nên phần này phải rẻ
         // và phải giống hệt phần panel hiển thị, tránh cảnh 2 nơi chấm điểm lệch nhau.
+        // Sức tướng và tay người cầm NHÂN với nhau chứ không cộng: người giỏi khuếch đại tướng mạnh, còn
+        // người yếu thì không rút được giá trị của tướng mạnh. Cộng dồn (bản trước) khiến điểm rank lấn át
+        // hẳn tier — từng cho ra "cấm Thane tier B vì người cầm Đại cao thủ", đốt lượt cấm vào tướng yếu.
         function bo1BaseThreat(hero, owners, myRankScore) {
             const d = draftData.find(x => x.hero === hero);
             const reasons = [];
-            let score = d ? (7 - tierRank(d.tier)) * 3 : 3; // sức mạnh tướng: hạ trọng số, không còn là yếu tố chính
+            // Ngoài Meta Pool thì không có tier để chấm — cho mức ngang B, đủ để không bị bỏ qua nhưng
+            // cũng không được coi ngang tướng S.
+            const heroStrength = d ? (7 - tierRank(d.tier)) * 3 : 9;
             if (d) reasons.push(`tier ${d.tier}`);
+            else reasons.push('ngoài Meta Pool');
 
             const ranks = owners.map(effectiveRankScore).filter(r => r !== null);
             const ownerRank = ranks.length ? Math.max(...ranks) : null;
             const topOwner = owners.find(o => effectiveRankScore(o) === ownerRank) || owners[0];
 
-            // Người cầm: đây mới là vế quyết định. Không rõ rank thì cho mức trung tính cao, không cho 0 —
-            // ẩn thông tin không có nghĩa là yếu (xem Nofear).
-            if (ownerRank !== null) {
-                score += ownerRank * 5;
+            let factor, outclassed = false;
+            if (ownerRank === null) {
+                factor = 1.15; // rank ẩn: hơi thận trọng, ẩn không có nghĩa là yếu (xem Nofear)
+                reasons.push('không rõ rank — không đánh giá thấp');
+            } else {
+                factor = Math.max(0.5, Math.min(1.6, 0.55 + ownerRank * 0.13));
                 reasons.push(`người cầm ${topOwner.rank}${topOwner.peak ? ` (từng ${topOwner.peak})` : ''}`);
                 if (myRankScore !== null) {
                     const gap = myRankScore - ownerRank;
-                    if (gap >= 2) { score -= gap * 6; reasons.push(`mình trên họ ${gap.toFixed(1)} bậc — không cần ngại`); }
-                    else if (gap <= -1) { score += 10; reasons.push('họ trên bậc mình'); }
+                    if (gap >= 2) {
+                        factor *= Math.max(0.5, 1 - gap * 0.12);
+                        outclassed = true;
+                        reasons.push(`mình trên họ ${gap.toFixed(1)} bậc — không cần ngại`);
+                    } else if (gap <= -1) {
+                        factor *= 1.15;
+                        reasons.push('họ trên bậc mình');
+                    }
                 }
-            } else {
-                score += 25;
-                reasons.push('không rõ rank — không đánh giá thấp');
             }
-            if (owners.length > 1) { score += owners.length * 5; reasons.push(`${owners.length} người cùng cầm`); }
+            if (owners.length > 1) { factor *= 1 + (owners.length - 1) * 0.25; reasons.push(`${owners.length} người cùng cầm`); }
 
-            return { d, score, reasons, ownerRank, topOwner };
+            return { d, score: heroStrength * factor, reasons, ownerRank, topOwner, outclassed };
+        }
+
+        // Đã soi được bao nhiêu phần đội hình họ. Dùng để cân nhắc mức tin vào pool đã trinh sát: soi được
+        // gần hết thì tướng ngoài pool gần như chắc chắn họ không đụng tới, soi được ít thì không dám chắc.
+        function bo1ScoutingCompleteness() {
+            const team = scoutedTeams[bo1Opponent];
+            if (!team || !team.players.length) return 0;
+            return team.players.filter(p => (p.heroes || []).length > 0).length / team.players.length;
         }
 
         // Bảng nguy hiểm theo đội đã chọn, nhớ lại theo (đội + rank mình) vì gợi ý cấm gọi rất nhiều lần.
@@ -1230,7 +1253,13 @@
             // sách prose riêng nên nó nói được cả thứ dữ liệu không chứng minh (từng lọt "cấm Zata" cho 1
             // người không hề có Zata trong pool). Một nguồn sự thật thì không tự mâu thuẫn được.
             const live = threats.filter(t => t.status === 'live');
-            const priorityBans = live.filter(t => t.inMetaPool).slice(0, 3);
+            // Lấy top-N suông là sai: đội nào cũng bị liệt kê đủ 3 dòng kể cả khi tướng thứ 3 vừa bị chính
+            // hệ thống ghi "mình trên họ 4.8 bậc — không cần ngại". Chỉ liệt những mối thật sự đáng 1 lượt
+            // cấm: không bị mình vượt hẳn bậc, và đủ nặng so với mối nguy nhất.
+            const topScore = live.length ? live[0].score : 0;
+            const priorityBans = live
+                .filter(t => t.inMetaPool && !t.outclassed && t.score >= Math.max(12, topScore * 0.45))
+                .slice(0, 3);
             // Mối đe dọa mà mình KHÔNG cầm nổi bài trị nào thì không thể xử lý bằng pick — chỉ còn cách
             // cấm. Đây là thứ đáng nói nhất mà bảng counter thuần lý thuyết không bao giờ chỉ ra được.
             const mustBan = live.filter(t => t.inMetaPool &&
@@ -1304,10 +1333,11 @@
                 <div class="space-y-2 text-sm">
                     <div class="p-3 bg-slate-800 rounded border-l-4 border-sky-500"><b class="text-sky-400">Nhận định:</b> <span class="text-slate-300">${team.read}</span></div>
 
-                    <div class="p-3 bg-slate-800 rounded border-l-4 border-rose-500"><b class="text-rose-400">Ưu tiên cấm (tính từ dữ liệu, đã cộng điểm vào gợi ý cấm mỗi lượt Ban):</b>
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-rose-500"><b class="text-rose-400">Ưu tiên cấm trước trận (tính từ dữ liệu trinh sát):</b>
                         ${priorityBans.length ? `<ul class="text-slate-300 mt-1 space-y-1">
                             ${priorityBans.map((t, i) => `<li>• <b class="text-white">${i + 1}. ${t.hero}</b> <span class="text-slate-400 text-xs">${t.reasons.join(' · ')}</span></li>`).join('')}
                         </ul>` : '<p class="text-slate-400 mt-1">Không còn tướng tủ nào đáng cấm — đã bị chặn hoặc họ hết chỗ.</p>'}
+                        <p class="text-xs text-slate-500 mt-2">Đây là kế hoạch tổng trước trận, chỉ nhìn đội hình họ. Điểm này đã cộng thẳng vào <b>Gợi ý Lượt</b> bên dưới — nhưng ở đó thứ tự có thể khác vì còn cân thêm vị trí họ đang trống, tướng mình đã pick và giá trị cấm (cấm xong họ còn tướng thay thế không). Trong lúc draft, lấy Gợi ý Lượt làm chuẩn.</p>
                     </div>
 
                     ${mustBan.length ? `
@@ -2031,12 +2061,26 @@
                 // tier + số người cùng cầm), không phải theo 1 danh sách viết tay. Nhờ vậy tướng tủ của
                 // người mạnh luôn được ưu tiên cấm hơn tướng tier cao nằm tay người mình vượt hẳn bậc.
                 if (seriesFormat === 'bo1' && bo1Opponent && scoutedTeams[bo1Opponent]) {
+                    const teamName = scoutedTeams[bo1Opponent].name;
                     const hit = bo1ThreatIndex().get(d.hero);
                     if (hit) {
-                        // Chặn dưới ở -12: trinh sát được phép HẠ ưu tiên tướng nằm tay người mình vượt bậc,
-                        // nhưng không được xóa sổ lý do cấm chung của meta (tướng S+ vẫn là tướng S+).
-                        score += Math.max(-12, Math.min(30, Math.round(hit.score / 2)));
-                        reasons.push(`🎯 Trinh sát ${scoutedTeams[bo1Opponent].name}: ${hit.reasons.join(', ')}`);
+                        score += Math.min(34, Math.round(hit.score));
+                        // Bảng trinh sát loại hẳn tướng mà mình vượt bậc người cầm; nếu ở đây chỉ cộng
+                        // điểm dương thì cùng 1 tướng vẫn leo cao trong gợi ý theo lượt nhờ tier — đúng
+                        // kiểu lệch mà Natalya từng dính. Phải trừ luôn cho hai bảng cùng kết luận.
+                        if (hit.outclassed) score -= 15;
+                        reasons.push(`🎯 Trinh sát ${teamName}: ${hit.reasons.join(', ')}`);
+                    } else {
+                        // Tướng KHÔNG có trong pool đã trinh sát: cấm nó gần như là cấm hụt vì họ sẽ không
+                        // đụng tới. Đây là chỗ trước đây 2 bảng nói ngược nhau — bảng theo lượt vẫn đẩy
+                        // Sinestrea/Billow lên đầu chỉ vì S+, trong khi cả 2 đều không nằm trong pool của họ.
+                        // Trừ theo mức đã soi được: soi càng kỹ thì càng dám tin là họ không có tướng đó.
+                        const comp = bo1ScoutingCompleteness();
+                        const penalty = Math.round(20 * comp);
+                        if (penalty > 0) {
+                            score -= penalty;
+                            reasons.push(`không nằm trong pool đã trinh sát của ${teamName} (đã soi ${Math.round(comp * 100)}% đội hình) — nhiều khả năng cấm hụt`);
+                        }
                     }
                 }
 
