@@ -161,19 +161,35 @@
         <section id="simulator-tab" class="tab-content hidden">
             <h2 class="text-2xl font-bold text-amber-400 mb-6 heading">Draft Simulator (Pro Format)</h2>
 
-            <!-- Ràng buộc Series (Bo3/Bo5) -->
+            <!-- Ràng buộc Series (Bo1/Bo3/Bo5) -->
             <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-6">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <h4 class="text-amber-400 font-bold text-sm heading">🔒 Ràng buộc Series (Bo3/Bo5)</h4>
+                    <h4 class="text-amber-400 font-bold text-sm heading">🔒 Ràng buộc Series</h4>
                     <button onclick="clearSeriesLock()" class="text-xs text-rose-400 hover:underline">Xóa hết</button>
                 </div>
-                <p class="text-xs text-slate-400 mb-3">Đánh dấu tướng đã cấm/đã dùng ở game trước trong series — các game tiếp theo sẽ tự loại khỏi Hero Pool (không mất khi bấm Reset draft, chỉ mất khi "Xóa hết").</p>
-                <div class="flex gap-2 mb-3">
-                    <input list="series-hero-datalist" id="series-lock-input" placeholder="Nhập tên tướng rồi Enter..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500" onkeydown="if(event.key==='Enter'){event.preventDefault();addSeriesLock();}">
-                    <datalist id="series-hero-datalist"></datalist>
-                    <button onclick="addSeriesLock()" class="bg-amber-500 text-slate-900 font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-400 flex-shrink-0">Thêm</button>
+                <div class="flex gap-2 mb-3" id="series-format-toggle">
+                    <button data-format="bo1" onclick="setSeriesFormat('bo1')" class="series-format-btn flex-1 text-sm font-bold py-2 rounded-lg border">BO1</button>
+                    <button data-format="bo3" onclick="setSeriesFormat('bo3')" class="series-format-btn flex-1 text-sm font-bold py-2 rounded-lg border">BO3</button>
+                    <button data-format="bo5" onclick="setSeriesFormat('bo5')" class="series-format-btn flex-1 text-sm font-bold py-2 rounded-lg border">BO5</button>
                 </div>
-                <div id="series-lock-list" class="flex flex-wrap gap-2"></div>
+
+                <div id="series-lock-section">
+                    <p class="text-xs text-slate-400 mb-3">Đánh dấu tướng đã cấm/đã dùng ở game trước trong series — các game tiếp theo sẽ tự loại khỏi Hero Pool (không mất khi bấm Reset draft, chỉ mất khi "Xóa hết").</p>
+                    <div class="flex gap-2 mb-3">
+                        <input list="series-hero-datalist" id="series-lock-input" placeholder="Nhập tên tướng rồi Enter..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500" onkeydown="if(event.key==='Enter'){event.preventDefault();addSeriesLock();}">
+                        <datalist id="series-hero-datalist"></datalist>
+                        <button onclick="addSeriesLock()" class="bg-amber-500 text-slate-900 font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-400 flex-shrink-0">Thêm</button>
+                    </div>
+                    <div id="series-lock-list" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div id="bo1-scout-section" class="hidden">
+                    <p class="text-xs text-slate-400 mb-3">Đấu 1 game duy nhất — chọn đội đối đầu đã trinh sát để nhận gợi ý cấm/đối sách. Tướng ưu tiên cấm của đội này sẽ được cộng điểm thật trong gợi ý cấm ở mỗi lượt Ban.</p>
+                    <select id="bo1-opponent-select" onchange="setBo1Opponent(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500 mb-3">
+                        <option value="">— Chọn đội đối đầu —</option>
+                    </select>
+                    <div id="bo1-scout-result"></div>
+                </div>
             </div>
 
             <!-- Kế hoạch Đội Hình: đấu Bo1 nên khó bị đối thủ bắt bài trước, nhưng vẫn cần 1 hướng đi rõ
@@ -895,6 +911,122 @@
             if (simSelectedHero) renderSelectionRisk(simSelectedHero);
         }
 
+        // --- BO1: TRINH SÁT ĐỐI THỦ ---
+        // Đấu Bo1 không có game trước trong series để rút kinh nghiệm, nên phải chuẩn bị trước bằng scouting.
+        // priorityBans không chỉ hiển thị tĩnh — cộng điểm thật vào buildRankedBans() để gợi ý cấm mỗi lượt
+        // Ban tự ưu tiên đúng tướng đã trinh sát của đội đang chọn.
+        const scoutedTeams = {
+            legends_vps: {
+                name: "Legends of VPS",
+                read: "Chênh lệch rank rất lớn trong đội (Đại Cao Thủ vs Đồng 3) — mắt xích rõ nhất trong 4 đội hay gặp. 2 người duy nhất cùng cầm Nakroth, nhiều khả năng đội dùng 1 tướng meta thật để gánh vị trí yếu hơn. Phần lớn đăng ký đa vị trí nên khó đoán lane — nên cấm/pick theo sức mạnh tướng hơn là theo giả định vị trí.",
+                priorityBans: [
+                    { hero: "Nakroth", reason: "tướng meta thật duy nhất của đội, 2 người cùng cầm" }
+                ],
+                counters: [
+                    { vs: "Nakroth (S, Jungle)", picks: "Aoi, Zephys, Zuka" }
+                ]
+            },
+            nofear: {
+                name: "Nofear",
+                read: "Phần lớn tuyển thủ (kể cả đội trưởng đi Mid) ẩn hoàn toàn thông tin — tín hiệu bất thường nhất, nhiều khả năng có tài khoản phụ hoặc cố ý giấu bài. Đừng coi các vị trí thiếu dữ liệu là điểm yếu — nên draft thận trọng, giữ lại 1 lượt cấm để phản ứng theo diễn biến.",
+                priorityBans: [
+                    { hero: "Hayate", reason: "carry tuyến sau cực mạnh (S+, AD), top-ban bất kể đối thủ là ai" },
+                    { hero: "Ryoma", reason: "poke lane rất mạnh (S, Caesar) nếu chiếm lợi thế sớm" }
+                ],
+                counters: [
+                    { vs: "Hayate (S+, AD)", picks: "Moren, Violet, Flowborn" },
+                    { vs: "Ryoma (S, Caesar)", picks: "Yena, Omen, Qi" }
+                ]
+            },
+            dung_im: {
+                name: "Tất cả đứng im",
+                read: "Mặt bằng rank thấp nhất trong các đội hay gặp. Kèo dễ thở nhất trên giấy, nhưng vẫn nên cấm 1-2 tướng meta thật thay vì bỏ hẳn lượt cấm.",
+                priorityBans: [
+                    { hero: "Nakroth", reason: "tướng meta thật rõ nhất của đội (S, Jungle)" },
+                    { hero: "Violet", reason: "tướng AD thật mạnh nhất đội (S+)" }
+                ],
+                counters: [
+                    { vs: "Nakroth (S, Jungle)", picks: "Aoi, Zephys, Zuka" },
+                    { vs: "Violet (S+, AD)", picks: "Hayate, Moren, Flowborn" },
+                    { vs: "Elsu (S, AD, theo ghi chú)", picks: "Moren, Violet, Hayate, Sinestrea, Billow" },
+                    { vs: "Tel'Annas (A, AD)", picks: "Capheny, Violet, Hayate, Billow, Stuart" }
+                ]
+            },
+            mua_lua: {
+                name: "Biệt đội mùa lửa",
+                read: "Đội nguy hiểm nhất trong các đội hay gặp. Vị trí AD sở hữu tới 3 tướng S/S+ thật cùng lúc. Có tuyển thủ hiển thị rank thấp nhưng từng đạt hạng cao hơn hẳn — dấu hiệu smurf/derank, đừng đánh giá thấp theo rank hiện tại.",
+                priorityBans: [
+                    { hero: "Florentino", reason: "tướng chủ lực thật (S+, Caesar) của tuyển thủ nghi smurf" },
+                    { hero: "Aya", reason: "Support thật mạnh (S+), phối hợp tốt với Aoi/Nakroth/Capheny" },
+                    { hero: "Zata", reason: "tướng Mid mạnh nhất Meta Pool khớp lối chơi \"luyện thuần Mid\"" }
+                ],
+                counters: [
+                    { vs: "Violet/Elsu/Moren (bộ 3 AD)", picks: "Hayate là điểm chung khắc chế cả 3, ưu tiên tự pick sớm" },
+                    { vs: "Florentino (S+, Caesar)", picks: "Arthur, Zuka, Volkath" },
+                    { vs: "Aya (S+, Support)", picks: "Alice, Dolia, Annette" },
+                    { vs: "Zata (S+, Mid)", picks: "Yue, Liliana, Raz" }
+                ]
+            }
+        };
+
+        let seriesFormat = localStorage.getItem('lqSeriesFormat') || 'bo3';
+        let bo1Opponent = localStorage.getItem('lqBo1Opponent') || '';
+
+        function setSeriesFormat(fmt) {
+            seriesFormat = fmt;
+            try { localStorage.setItem('lqSeriesFormat', fmt); } catch (e) {}
+            renderSeriesFormatToggle();
+            refreshAfterSeriesLockChange();
+        }
+        function renderSeriesFormatToggle() {
+            document.querySelectorAll('.series-format-btn').forEach(btn => {
+                const active = btn.dataset.format === seriesFormat;
+                btn.classList.toggle('bg-amber-500', active);
+                btn.classList.toggle('text-slate-900', active);
+                btn.classList.toggle('border-amber-500', active);
+                btn.classList.toggle('bg-slate-800', !active);
+                btn.classList.toggle('text-slate-300', !active);
+                btn.classList.toggle('border-slate-700', !active);
+            });
+            const lockSection = document.getElementById('series-lock-section');
+            const bo1Section = document.getElementById('bo1-scout-section');
+            if (lockSection) lockSection.classList.toggle('hidden', seriesFormat === 'bo1');
+            if (bo1Section) bo1Section.classList.toggle('hidden', seriesFormat !== 'bo1');
+        }
+        function populateBo1OpponentSelect() {
+            const sel = document.getElementById('bo1-opponent-select');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">— Chọn đội đối đầu —</option>' +
+                Object.entries(scoutedTeams).map(([id, t]) => `<option value="${id}">${t.name}</option>`).join('');
+            sel.value = bo1Opponent;
+        }
+        function setBo1Opponent(id) {
+            bo1Opponent = id;
+            try { localStorage.setItem('lqBo1Opponent', id); } catch (e) {}
+            renderBo1ScoutResult();
+            refreshAfterSeriesLockChange();
+        }
+        function renderBo1ScoutResult() {
+            const el = document.getElementById('bo1-scout-result');
+            if (!el) return;
+            const team = scoutedTeams[bo1Opponent];
+            if (!team) { el.innerHTML = ''; return; }
+            el.innerHTML = `
+                <div class="space-y-2 text-sm">
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-sky-500"><b class="text-sky-400">Nhận định:</b> <span class="text-slate-300">${team.read}</span></div>
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-rose-500"><b class="text-rose-400">Ưu tiên cấm (đã cộng điểm vào gợi ý cấm mỗi lượt Ban):</b>
+                        <ul class="text-slate-300 mt-1 space-y-1">
+                            ${team.priorityBans.map(b => `<li>• <b class="text-white">${b.hero}</b> — ${b.reason}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-slate-800 rounded border-l-4 border-emerald-500"><b class="text-emerald-400">Đối sách:</b>
+                        <div class="text-slate-300 mt-1 space-y-1">
+                            ${team.counters.map(c => `<div>${c.vs} → <b class="text-white">${c.picks}</b></div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
         // --- DRAFT SIMULATOR LOGIC ---
         let simSelectedHero = null;
         let simStep = 0;
@@ -1560,6 +1692,13 @@
                 // 5. Sức mạnh meta — chỉ còn trống qua flex thì hạ tier trước khi tính, cùng quy ước với buildRankedPicks
                 const effTier = (!openForPos && openForFlex) ? degradeTier(d.tier) : d.tier;
                 score += (7 - tierRank(effTier)) * 4;
+
+                // 6. Trinh sát Bo1: đã chọn đội đối đầu thì cộng điểm thật cho tướng nằm trong ưu tiên
+                // cấm đã trinh sát, không chỉ hiển thị tĩnh — xem scoutedTeams.
+                if (seriesFormat === 'bo1' && bo1Opponent && scoutedTeams[bo1Opponent]) {
+                    const scoutHit = scoutedTeams[bo1Opponent].priorityBans.find(b => b.hero === d.hero);
+                    if (scoutHit) { score += 22; reasons.push(`🎯 Trinh sát ${scoutedTeams[bo1Opponent].name}: ${scoutHit.reason}`); }
+                }
 
                 return { d, score, reasons };
             }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
@@ -2500,6 +2639,9 @@
         renderDraft();
         renderMeta();
         renderSeriesLockUI();
+        renderSeriesFormatToggle();
+        populateBo1OpponentSelect();
+        renderBo1ScoutResult();
 
         // Khôi phục draft đang dở (nếu có) trước khi render simulator
         const restored = loadDraftState();
