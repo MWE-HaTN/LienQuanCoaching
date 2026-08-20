@@ -2892,13 +2892,22 @@
             if (picks.length === 0) return `<p class="text-slate-500 italic">Chưa có tướng nào được pick.</p>`;
 
             // Ghép dữ liệu meta chi tiết (draftData) khi có, hoặc dữ liệu suy luận theo class (allHeroes) khi tướng ngoài pool Meta
-            const heroInfos = picks.map(p => {
+            const infoByName = {};
+            picks.forEach(p => {
                 const meta = draftData.find(d => d.hero === p);
                 const base = allHeroes.find(h => h.name === p);
-                if (meta) return { hero: p, pos: meta.pos, wc_type: meta.wc_type, spike: meta.spike, use: meta.use, wincond: meta.wincond };
-                if (base) return { hero: p, pos: base.pos, wc_type: base.wc, spike: base.spike, use: `Tướng ${base.class}, chưa có ghi chú vận hành chi tiết trong Meta Pool.`, wincond: getWcName(base.wc) };
-                return null;
-            }).filter(Boolean);
+                if (meta) infoByName[p] = { hero: p, pos: meta.pos, wc_type: meta.wc_type, spike: meta.spike, use: meta.use, wincond: meta.wincond };
+                else if (base) infoByName[p] = { hero: p, pos: base.pos, wc_type: base.wc, spike: base.spike, use: `Tướng ${base.class}, chưa có ghi chú vận hành chi tiết trong Meta Pool.`, wincond: getWcName(base.wc) };
+            });
+            // Liệt kê theo đúng thứ tự vị trí trong game (Caesar→Jungle→Mid→AD→Support), tính cả flex qua
+            // computeLaneAssignment — giống hệt cách "Kế Hoạch Đội Hình" đang xếp — thay vì theo thứ tự
+            // pick lúc draft (P1..P5), vốn lộn xộn vì thứ tự pick không liên quan gì đến vai trò trong game.
+            const { assignment, unassignedHeroes } = computeLaneAssignment(picks.filter(p => infoByName[p]));
+            const orderedNames = [
+                ...["Caesar", "Jungle", "Mid", "AD", "Support"].map(pos => assignment[pos]).filter(Boolean),
+                ...unassignedHeroes // trùng vai trò (buildLaneCoverageWarning) vẫn phải liệt kê đủ, xếp cuối
+            ];
+            const heroInfos = orderedNames.map(n => infoByName[n]).filter(Boolean);
             if (heroInfos.length === 0) return `<p class="text-slate-500 italic">Chưa có dữ liệu chiến thuật cho đội hình này.</p>`;
 
             const wcCounts = {};
